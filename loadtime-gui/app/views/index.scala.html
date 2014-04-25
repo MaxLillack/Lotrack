@@ -1,0 +1,112 @@
+@(projects : List[String])
+@main("Load-Time Variability") {
+
+    <div class="navbar navbar-fixed-top navbar-inverse" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/">Load-Time Variability</a>
+          <a class="navbar-brand" href="/overview">Overview</a>
+        </div>
+      </div><!-- /.container -->
+    </div><!-- /.navbar -->
+
+    <div class="container">
+
+      <div class="row row-offcanvas row-offcanvas-right">
+
+		<div class="col-xs-3 col-sm-3 col-lg-3">
+			
+			<form role="form">
+				<label for="projects">Project</label>
+				<select id="projects">
+					@for(p <- projects) {
+						<option value="@p">@p</option>
+					}
+				</select>
+			</form>
+		
+			<button type="button" class="btn btn-primary" id="runButton" style="margin: 10px 0px">Run</button>
+			<img id="loaderIcon" src="@routes.Assets.at("images/ajax-loader.gif")" id="loading-indicator" style="display:none"/>
+			<div id="tree">
+			</div>
+		</div>
+		<div class="col-xs-9 col-sm-9 col-lg-9">
+			<pre class="prettyprint linenums" id="javaSourceCode" style="min-height: 500px">
+			</pre>
+			<div id="jimpleSources">
+			</div>
+		</div>
+      </div><!--/row-->
+    </div><!--/.container-->
+    <hr>
+    <footer>
+    </footer>
+    
+    <script>
+    
+       var loadSourceCode = function(path)
+       {
+    	   $("#loaderIcon").show();
+           $.post("/loadResult", { "fileName" : path, "project" :  $('#projects  option:selected').val() }, function(data) {
+           	   
+               $('#javaSourceCode').html(data.javaSource);
+               
+               $("#jimpleSources").empty();
+               
+               if(data.jimpleSource != null) {
+	               $.each(data.jimpleSource, function(key, value) {
+	                   var p = $(document.createElement('p')).text(key);
+	                   $("#jimpleSources").append(p);
+	                   
+					   var pre = $(document.createElement('pre')).addClass("prettyprint").addClass("linenums").css("min-height","400px").html(value);
+	                   $("#jimpleSources").append(pre);
+	
+	               });
+	               
+	               prettyPrint();
+               }
+               
+               $("#loaderIcon").hide();
+           });
+       }
+    
+	    $('#tree')
+		  // listen for event
+		  .on('select_node.jstree', function (e, data) {
+		      var text = data.instance.get_node(data.selected[0]).text;
+		      var icon = data.instance.get_node(data.selected[0]).icon;
+		      if(icon == "glyphicon glyphicon-minus") {
+		     	 loadSourceCode(data.instance.get_node(data.selected[0]).id);
+		      }
+		  })
+	
+		var loadResult = function() {
+			
+			$('#tree').jstree({
+			'core' : {
+			  'data' : {
+			    'url' : '/fileTree',
+			    'data' : function(node) {
+			    	return {'project' : $('#projects  option:selected').val() };
+			    }
+			  },
+			  'multiple' : false
+			}
+		    });
+		    $('#tree').jstree("refresh");
+		};
+		
+		
+		
+		$("#runButton").click(loadResult);
+		$("#projects").change(loadResult);
+		
+		loadResult();
+	</script>
+}

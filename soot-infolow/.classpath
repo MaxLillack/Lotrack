@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="test"/>
+	<classpathentry kind="src" path="securiBench"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/heros"/>
+	<classpathentry kind="lib" path="lib/cos.jar"/>
+	<classpathentry kind="lib" path="lib/j2ee.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-api-1.7.5.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-simple-1.7.5.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/SPLLift_neu"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/soot"/>
+	<classpathentry kind="lib" path="C:/Users/Max/workspace/SPLLift_neu/lib/JavaBDD/javabdd-1.0b2.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/Tools/MongoDB/mongo-java-driver-2.11.3.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/Tools/commons-io-2.4.jar"/>
+	<classpathentry kind="lib" path="lib/config-1.2.0.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/Tools/guava-16.0.1.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

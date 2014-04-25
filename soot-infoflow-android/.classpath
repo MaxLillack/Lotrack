@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="test"/>
+	<classpathentry kind="lib" path="lib/polyglot.jar"/>
+	<classpathentry kind="lib" path="lib/AXMLPrinter2.jar" sourcepath="lib/AXMLPrinter2-src"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/soot-infoflow"/>
+	<classpathentry kind="lib" path="lib/axml-1.0.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/soot"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/SPLLift_neu"/>
+	<classpathentry kind="lib" path="C:/Users/Max/workspace/soot-infoflow-android/lib/slf4j-api-1.7.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/workspace/soot-infoflow-android/lib/slf4j-simple-1.7.5.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/Tools/MongoDB/mongo-java-driver-2.11.3.jar"/>
+	<classpathentry kind="lib" path="lib/commons-io-2.4.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/workspace/soot-infoflow/lib/config-1.2.0.jar" sourcepath="C:/Users/Max/.m2/repository/com/typesafe/config/1.2.0/config-1.2.0-sources.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/Tools/guava-16.0.1.jar"/>
+	<classpathentry kind="lib" path="C:/Users/Max/Tools/junit-benchmarks-0.7.2/junit-benchmarks-0.7.2.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

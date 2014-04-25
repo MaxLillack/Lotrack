@@ -1,0 +1,50 @@
+@(results: List[LoadTimeResult])
+@main("Load-Time Variability") {
+
+    <div class="navbar navbar-fixed-top navbar-inverse" role="navigation">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/">Load-Time Variability</a>
+          <a class="navbar-brand" href="/overview">Overview</a>
+        </div>
+      </div><!-- /.container -->
+    </div><!-- /.navbar -->
+
+    <div class="container">
+
+      <div class="row row-offcanvas row-offcanvas-right">
+
+		<table class="table">
+			<thead>
+				<tr>
+					<td>Project</td>
+					<td>Constraint</td>
+					<td>Count</td>
+				</tr>
+			</thead>
+				@for(result <- results) {
+					<tr>
+						<td>@result.projectName</td>
+						<td>@result.constraint</td>
+						<td>@result.count</td>
+					</tr>
+				}
+			<tbody>
+			</tbody>
+		</table>
+
+      </div><!--/row-->
+    </div><!--/.container-->
+    <hr>
+    <footer>
+    </footer>
+    
+    <script>
+	</script>
+}

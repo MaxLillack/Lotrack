@@ -1,0 +1,43 @@
+<android.location.Location: double getLatitude()> -> _SOURCE_
+
+<android.content.Context: void sendBroadcast(android.content.Intent)> -> _SINK_
+<android.content.Context: void sendBroadcast(android.content.Intent,java.lang.String)> -> _SINK_
+
+<android.media.MediaRecorder: void setVideoSource(int)> -> _SINK_
+<android.media.MediaRecorder: void setPreviewDisplay(android.view.Surface)> -> _SINK_
+<android.media.MediaRecorder: void start()> -> _SINK_
+
+<android.content.Context: android.content.Intent registerReceiver(android.content.BroadcastReceiver,android.content.IntentFilter)> -> _SINK_
+<android.content.Context: android.content.Intent registerReceiver(android.content.BroadcastReceiver,android.content.IntentFilter,java.lang.String,android.os.Handler)> -> _SINK_
+
+<android.content.IntentFilter: void addAction(java.lang.String)> -> _SINK_
+<android.telephony.SmsManager: void sendTextMessage(java.lang.String,java.lang.String,java.lang.String,android.app.PendingIntent,android.app.PendingIntent)> android.permission.SEND_SMS -> _SINK_ 
+<android.telephony.SmsManager: void sendDataMessage(java.lang.String,java.lang.String,short,byte[],android.app.PendingIntent,android.app.PendingIntent)> android.permission.SEND_SMS -> _SINK_ 
+<android.telephony.SmsManager: void sendMultipartTextMessage(java.lang.String,java.lang.String,java.util.ArrayList,java.util.ArrayList,java.util.ArrayList)> android.permission.SEND_SMS -> _SINK_ 
+<java.net.Socket: void connect(java.net.SocketAddress)> -> _SINK_
+<android.os.Handler: boolean sendMessage(android.os.Message)> -> _SINK_
+<android.content.SharedPreferences$Editor: android.content.SharedPreferences$Editor putBoolean(java.lang.String,boolean)> -> _SINK_
+<android.content.SharedPreferences$Editor: android.content.SharedPreferences$Editor putFloat(java.lang.String,float)> -> _SINK_
+<android.content.SharedPreferences$Editor: android.content.SharedPreferences$Editor putInt(java.lang.String,int)> -> _SINK_
+<android.content.SharedPreferences$Editor: android.content.SharedPreferences$Editor putLong(java.lang.String,long)> -> _SINK_
+<android.content.SharedPreferences$Editor: android.content.SharedPreferences$Editor putString(java.lang.String,java.lang.String)> -> _SINK_
+
+<android.bluetooth.BluetoothAdapter: java.lang.String getAddress()> -> _SOURCE_
+<android.net.wifi.WifiInfo: java.lang.String: getMacAddress()> -> _SOURCE_
+<java.util.Locale: java.lang.String getCountry()> -> _SOURCE_
+<android.net.wifi.WifiInfo: java.lang.String getSSID()> -> _SOURCE_
+<android.telephony.gsm.GsmCellLocation: int getCid()> -> _SOURCE_
+<android.telephony.gsm.GsmCellLocation: int getLac()> -> _SOURCE_
+<android.location.Location: double getLongitude()> -> _SOURCE_
+<android.location.Location: double getLatitude()> -> _SOURCE_
+<android.accounts.AccountManager: android.accounts.Account[] getAccounts()> -> _SOURCE_
+<java.util.Calendar: java.util.TimeZone getTimeZone()> -> _SOURCE_
+<android.provider.Browser: android.database.Cursor getAllBookmarks()> -> _SOURCE_
+<android.provider.Browser: android.database.Cursor getAllVisitedUrls()> -> _SOURCE_
+<java.net.URL: java.net.URLConnection openConnection()> -> _SOURCE_
+
+<org.apache.http.impl.client.DefaultHttpClient: org.apache.http.HttpResponse execute(org.apache.http.client.methods.HttpUriRequest)> -> _SINK_
+<org.apache.http.client.HttpClient: org.apache.http.HttpResponse execute(org.apache.http.client.methods.HttpUriRequest)> -> _SINK_
+
+<android.content.ContentResolver: android.database.Cursor query(android.net.Uri,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String)> -> _SOURCE_
+<android.content.ContentResolver: android.database.Cursor query(android.net.Uri,java.lang.String[],java.lang.String,java.lang.String[],java.lang.String,android.os.CancellationSignal)> -> _SOURCE_

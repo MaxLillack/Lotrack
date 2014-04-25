@@ -1,0 +1,2 @@
+soot.jar=/var/www/static/abc/soot.jar
+infoflow.jar=build/jar/soot-infoflow.jar

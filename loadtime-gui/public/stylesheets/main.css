@@ -1,0 +1,33 @@
+pre {
+	overflow: auto;
+	max-height: 150px;
+    word-wrap: normal;
+    white-space: pre;
+}
+
+
+li.L0, li.L1, li.L2, li.L3,
+li.L5, li.L6, li.L7, li.L8
+{ list-style-type: decimal !important }
+
+
+.myPanelMenueEntry:hover{
+	cursor: pointer;
+	text-decoration:underline;
+}
+
+.myPanelMenueSubEntry{
+	margin-left: 20px;
+}
+
+#MyPanelMenue{
+	padding: 10px;
+	width: 200px;
+}
+
+.currentMacro{
+	background-color:#AEBFCE;
+}
+.currentMacro:hover{
+	background-color:#AEBFCE;
+}

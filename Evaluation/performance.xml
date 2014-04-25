@@ -1,0 +1,771 @@
+<benchmark-results tstamp="2014-04-22T20:45:05.143+0200">
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="am_ed_importcontacts_10304"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.536" round-stddev="0.157"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="27" gc-time="2.36"
+		 benchmark-time-total="22.693" warmup-time-total="27.943"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_adaway_48"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="11.115" round-stddev="0.093"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="45" gc-time="6.038"
+		 benchmark-time-total="55.576" warmup-time-total="37.21"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_jlyr_41"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="110.497" round-stddev="0.684"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="629" gc-time="6.211"
+		 benchmark-time-total="552.485" warmup-time-total="328.865"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_kvance_Nectroid_11"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.795" round-stddev="0.122"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="3.109"
+		 benchmark-time-total="18.975" warmup-time-total="11.042"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_bytten_xkcdviewer_32"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.544" round-stddev="0.037"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="1.631"
+		 benchmark-time-total="12.722" warmup-time-total="8.681"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_seafile_seadroid2_15"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="13.478" round-stddev="0.12"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="65" gc-time="7.841"
+		 benchmark-time-total="67.388" warmup-time-total="39.897"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="se_johanhil_duckduckgo_1"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="1.853" round-stddev="0.011"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="1.082"
+		 benchmark-time-total="9.266" warmup-time-total="6.399"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="tritop_androidSLWCpuWidget_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="1.695" round-stddev="0.01"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="1.17"
+		 benchmark-time-total="8.477" warmup-time-total="5.641"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="remuco_client_android_1"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.882" round-stddev="0.013"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="1.705"
+		 benchmark-time-total="14.411" warmup-time-total="8.771"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_tunesremote_253"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="12.11" round-stddev="0.713"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="62" gc-time="9.338"
+		 benchmark-time-total="60.548" warmup-time-total="34.28"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="ru_glesik_nostrangersms_141"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.916" round-stddev="0.024"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="2.997"
+		 benchmark-time-total="24.583" warmup-time-total="18.301"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="stericson_busybox_157"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="11.129" round-stddev="0.364"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="107" gc-time="7.322"
+		 benchmark-time-total="55.643" warmup-time-total="34.392"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_projectmaxs_module_ringermode_15"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.28" round-stddev="0.235"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="3.716"
+		 benchmark-time-total="16.398" warmup-time-total="12.002"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="pl_net_szafraniec_NFCTagmaker_14"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.279" round-stddev="0.035"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="3.211"
+		 benchmark-time-total="21.398" warmup-time-total="14.164"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="se_erikofsweden_findmyphone_12"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.004" round-stddev="0.432"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="7.946"
+		 benchmark-time-total="20.02" warmup-time-total="11.457"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_sufficientlysecure_localcalendar_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="6.483" round-stddev="0.226"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="25" gc-time="6.325"
+		 benchmark-time-total="32.414" warmup-time-total="22.926"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_projectmaxs_module_filewrite_15"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.235" round-stddev="0.023"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="3.636"
+		 benchmark-time-total="16.177" warmup-time-total="11.993"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_sufficientlysecure_viewer_2500"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="78.636" round-stddev="15.661"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="449" gc-time="74.706"
+		 benchmark-time-total="393.182" warmup-time-total="206.359"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="tritop_android_SLWTrafficMeterWidget_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.359" round-stddev="0.023"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="4.25"
+		 benchmark-time-total="11.795" warmup-time-total="11.975"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_marcus905_wifi_ace_20120115"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.525" round-stddev="0.106"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="0.711"
+		 benchmark-time-total="12.625" warmup-time-total="16.624"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_anysoftkeyboard_languagepack_malayalam_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="1.168" round-stddev="0.01"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="0.395"
+		 benchmark-time-total="5.843" warmup-time-total="3.619"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="fr_gaulupeau_apps_InThePoche_8"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.848" round-stddev="0.06"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="1.229"
+		 benchmark-time-total="14.239" warmup-time-total="9.823"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_android_inputmethod_latin_4424"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="43.187" round-stddev="1.148"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="238" gc-time="26.458"
+		 benchmark-time-total="215.937" warmup-time-total="128.917"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_mehmetakiftutuncu_eshotroid_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="13.957" round-stddev="0.13"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="90" gc-time="10.954"
+		 benchmark-time-total="69.785" warmup-time-total="42.642"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_billthefarmer_accordion_101"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.041" round-stddev="0.161"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="2.876"
+		 benchmark-time-total="15.204" warmup-time-total="13.148"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_sf_andhsli_hotspotlogin_20"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.948" round-stddev="0.031"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="2.778"
+		 benchmark-time-total="14.741" warmup-time-total="11.774"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_geometerplus_zlibrary_ui_android_108022"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="28.945" round-stddev="0.574"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="88" gc-time="10.739"
+		 benchmark-time-total="144.724" warmup-time-total="86.628"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_danvelazco_fbwrapper_20140104"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="5.778" round-stddev="0.041"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="25" gc-time="4.049"
+		 benchmark-time-total="28.891" warmup-time-total="18.705"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_googamaphone_typeandspeak_36"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="8.013" round-stddev="0.348"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="30" gc-time="7.256"
+		 benchmark-time-total="40.064" warmup-time-total="23.602"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_kyakujin_android_tagnotepad_3"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="7.434" round-stddev="0.095"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="29" gc-time="5.758"
+		 benchmark-time-total="37.169" warmup-time-total="25.064"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_menny_android_anysoftkeyboard_111"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="41.188" round-stddev="9.768"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="214" gc-time="23.656"
+		 benchmark-time-total="205.942" warmup-time-total="123.712"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_ridgelineapps_resdicegame_13"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.85" round-stddev="0.124"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="4.35"
+		 benchmark-time-total="19.251" warmup-time-total="14.959"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_tkjelectronics_balanduino_1200050"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="15.441" round-stddev="0.634"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="80" gc-time="15.85"
+		 benchmark-time-total="77.204" warmup-time-total="46.856"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_mareksebera_simpledilbert_32"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="15.214" round-stddev="0.275"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="60" gc-time="11.304"
+		 benchmark-time-total="76.071" warmup-time-total="53.41"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_vonglasow_michael_satstat_60"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="10.648" round-stddev="0.699"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="84" gc-time="11.812"
+		 benchmark-time-total="53.242" warmup-time-total="34.494"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="de_ub0r_android_websms_connector_gmx_3200000"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.016" round-stddev="0.189"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="6.06"
+		 benchmark-time-total="20.081" warmup-time-total="17.935"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="eu_lighthouselabs_obd_reader_10"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.459" round-stddev="0.018"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="5.421"
+		 benchmark-time-total="17.295" warmup-time-total="12.847"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_elsdoerfer_android_autostarts_26"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="7.757" round-stddev="0.048"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="30" gc-time="7.166"
+		 benchmark-time-total="38.785" warmup-time-total="24.986"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_lardcave_keepassnfc_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="7.243" round-stddev="0.969"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="25" gc-time="9.926"
+		 benchmark-time-total="36.217" warmup-time-total="21.357"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_zola_bmi_1"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="8.727" round-stddev="0.962"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="30" gc-time="10.476"
+		 benchmark-time-total="43.634" warmup-time-total="30.418"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="jp_sblo_pandora_aGrep_11"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.353" round-stddev="0.105"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="6.229"
+		 benchmark-time-total="16.765" warmup-time-total="11.69"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_androidemu_gba_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.129" round-stddev="0.074"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="6.045"
+		 benchmark-time-total="15.645" warmup-time-total="12.846"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_androidemu_gbc_32"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="5.48" round-stddev="1.026"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="11.691"
+		 benchmark-time-total="27.399" warmup-time-total="15.222"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_connectbot_365"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="27.065" round-stddev="1.585"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="90" gc-time="20.308"
+		 benchmark-time-total="135.326" warmup-time-total="81.911"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_gc_networktester_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.463" round-stddev="0.012"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="6.64"
+		 benchmark-time-total="17.313" warmup-time-total="14.856"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_moparisthebest_appbak_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.509" round-stddev="0.078"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="6.701"
+		 benchmark-time-total="17.545" warmup-time-total="10.54"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_nurik_roman_muzei_1008"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="12.652" round-stddev="0.199"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="36" gc-time="10.024"
+		 benchmark-time-total="63.262" warmup-time-total="43.604"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="eu_e43_impeller_8007"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="51.519" round-stddev="0.697"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="240" gc-time="45.655"
+		 benchmark-time-total="257.597" warmup-time-total="154.476"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_sputnik_wispr_147"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.57" round-stddev="0.115"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="17" gc-time="7.004"
+		 benchmark-time-total="17.85" warmup-time-total="12.55"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_xabber_androiddev_81"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="40.603" round-stddev="0.188"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="150" gc-time="23.606"
+		 benchmark-time-total="203.017" warmup-time-total="125.263"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="nitezh_ministock_52"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.83" round-stddev="0.015"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="7.174"
+		 benchmark-time-total="24.149" warmup-time-total="15.508"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_scoutant_cc_1"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.674" round-stddev="0.028"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="7.331"
+		 benchmark-time-total="23.371" warmup-time-total="14.251"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="de_onyxbits_textfiction_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="9.842" round-stddev="0.126"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="60" gc-time="11.648"
+		 benchmark-time-total="49.21" warmup-time-total="31.548"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_servDroid_web_1000300"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="17.44" round-stddev="0.156"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="60" gc-time="14.025"
+		 benchmark-time-total="87.204" warmup-time-total="57.732"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_fred_feedex_41"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="23.153" round-stddev="0.532"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="136" gc-time="22.171"
+		 benchmark-time-total="115.767" warmup-time-total="69.109"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_sixgun_ponyexpress_12"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="5.965" round-stddev="0.042"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="9.204"
+		 benchmark-time-total="29.825" warmup-time-total="22.748"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_smerty_zooborns_14"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.176" round-stddev="0.147"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="8.649"
+		 benchmark-time-total="20.881" warmup-time-total="17.343"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_ten15_diyfish_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.575" round-stddev="0.044"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="8.397"
+		 benchmark-time-total="17.873" warmup-time-total="11.926"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_beem_project_beem_15"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="63.498" round-stddev="0.973"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="85" gc-time="188.175"
+		 benchmark-time-total="317.49" warmup-time-total="124.753"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_seavenois_tetris_3"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="8.45" round-stddev="0.22"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="38" gc-time="9.985"
+		 benchmark-time-total="42.25" warmup-time-total="29.504"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_amphoras_tpthelper_24"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="19.309" round-stddev="0.224"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="50" gc-time="11.956"
+		 benchmark-time-total="96.547" warmup-time-total="58.872"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_github_grimpy_botifier_14"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="7.069" round-stddev="0.73"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="29" gc-time="11.94"
+		 benchmark-time-total="35.345" warmup-time-total="22.072"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_brewcrewfoo_performance_4"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="9.574" round-stddev="0.137"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="34" gc-time="11.061"
+		 benchmark-time-total="47.87" warmup-time-total="28.845"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_gs_mobileprint_1"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="5.345" round-stddev="0.317"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="23" gc-time="10.792"
+		 benchmark-time-total="26.727" warmup-time-total="22.348"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_roguetemple_hydroid_1500"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.867" round-stddev="0.108"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="9.03"
+		 benchmark-time-total="19.336" warmup-time-total="13.87"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_smerty_ham_18"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="7.795" round-stddev="0.069"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="30" gc-time="10.258"
+		 benchmark-time-total="38.976" warmup-time-total="25.452"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_spazedog_mounts2sd_33"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="14.44" round-stddev="0.365"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="40" gc-time="29.746"
+		 benchmark-time-total="72.2" warmup-time-total="38.507"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_yubico_yubiclip_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.787" round-stddev="0.103"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="8.235"
+		 benchmark-time-total="18.936" warmup-time-total="14.104"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_cr5315_cfdc_18"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.57" round-stddev="0.085"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="8.88"
+		 benchmark-time-total="22.849" warmup-time-total="13.618"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_google_code_apps2org_200"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="6.413" round-stddev="0.115"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="9.484"
+		 benchmark-time-total="32.065" warmup-time-total="18.977"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="eu_vranckaert_worktime_270"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="181.222" round-stddev="5.498"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="219" gc-time="601.556"
+		 benchmark-time-total="906.112" warmup-time-total="499.753"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="fr_xgouchet_texteditor_19"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="4.971" round-stddev="0.16"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="9.528"
+		 benchmark-time-total="24.857" warmup-time-total="29.65"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="app_openconnect_819"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="10.578" round-stddev="0.114"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="30.464"
+		 benchmark-time-total="52.893" warmup-time-total="35.474"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="headrevision_BehatReporter_5"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="150.131" round-stddev="1.955"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="160" gc-time="398.437"
+		 benchmark-time-total="750.655" warmup-time-total="442.01"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_sgr_b2_compass_18"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="14.971" round-stddev="0.842"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="26" gc-time="52.501"
+		 benchmark-time-total="74.854" warmup-time-total="45.542"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="name_soulayrol_rhaa_sholi_4"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="6.102" round-stddev="0.185"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="19.033"
+		 benchmark-time-total="30.51" warmup-time-total="18.343"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="in_shick_diode_14"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="47.881" round-stddev="0.566"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="60" gc-time="118.948"
+		 benchmark-time-total="239.406" warmup-time-total="140.212"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_java_SmokeReducer_1"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="3.922" round-stddev="0.039"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="5" gc-time="9.048"
+		 benchmark-time-total="19.609" warmup-time-total="11.891"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_oschina_app_18"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="78.738" round-stddev="2.682"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="119" gc-time="257.951"
+		 benchmark-time-total="393.689" warmup-time-total="207.823"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="net_szym_barnacle_39"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="9.133" round-stddev="0.105"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="32.413"
+		 benchmark-time-total="45.665" warmup-time-total="35.586"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_dolphinemu_dolphinemu_11"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="16.795" round-stddev="0.348"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="25" gc-time="54.473"
+		 benchmark-time-total="83.973" warmup-time-total="51.083"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="fr_strasweb_asso_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="13.642" round-stddev="0.204"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="42.91"
+		 benchmark-time-total="68.209" warmup-time-total="41.555"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_pindroid_56"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="23.135" round-stddev="0.147"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="35" gc-time="78.012"
+		 benchmark-time-total="115.674" warmup-time-total="71.277"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_adblockplus_android_270"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="51.249" round-stddev="4.294"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="81" gc-time="198.549"
+		 benchmark-time-total="256.248" warmup-time-total="175.238"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_petero_droidfish_60"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="49.567" round-stddev="0.615"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="70" gc-time="165.484"
+		 benchmark-time-total="247.835" warmup-time-total="145.451"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="caldwell_ben_bites_4"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="6.956" round-stddev="0.161"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="21.85"
+		 benchmark-time-total="34.78" warmup-time-total="25.933"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_jf_Penroser_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="9.71" round-stddev="0.075"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="33.343"
+		 benchmark-time-total="48.552" warmup-time-total="29.706"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_recentwidget_6"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="6.903" round-stddev="0.093"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="21.288"
+		 benchmark-time-total="34.517" warmup-time-total="22.943"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_kai1973i_4"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="9.759" round-stddev="0.189"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="15" gc-time="33.051"
+		 benchmark-time-total="48.794" warmup-time-total="29.382"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="eu_siebeck_sipswitch_5"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="5.914" round-stddev="0.076"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="21.529"
+		 benchmark-time-total="29.58" warmup-time-total="17.414"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_gluegadget_hndroid_3"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="14.115" round-stddev="0.384"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="45.058"
+		 benchmark-time-total="70.578" warmup-time-total="43.094"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="edu_killerud_kitchentimer_5"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="6.689" round-stddev="0.037"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="10" gc-time="21.481"
+		 benchmark-time-total="33.446" warmup-time-total="20.24"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_traffar_game_of_life_2"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="2.989" round-stddev="0.08"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="5" gc-time="10.431"
+		 benchmark-time-total="14.945" warmup-time-total="9.091"
+		 threads="1"/>
+		 
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="com_alfray_timeriffic_10905"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="5.432" round-stddev="0.066"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="20" gc-time="1.673"
+		 benchmark-time-total="27.162" warmup-time-total="31.716"
+		 threads="1"/>
+
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="org_ametro_17"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="11.314" round-stddev="0.219"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="40" gc-time="5.284"
+		 benchmark-time-total="56.571" warmup-time-total="50.834"
+		 threads="1"/>
+		 
+	<testname classname="soot.jimple.infoflow.android.test.loadtime.Evaluation" name="damo_three_ie_9"
+		 benchmark-rounds="5" warmup-rounds="3"
+		 round-avg="22.62" round-stddev="0.57"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="109" gc-time="12.99"
+		 benchmark-time-total="199.27" warmup-time-total="86.20"
+		 threads="1"/>		 
+		 
+</benchmark-results>
