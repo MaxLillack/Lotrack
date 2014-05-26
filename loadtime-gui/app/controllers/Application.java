@@ -85,30 +85,32 @@ public class Application extends Controller {
 	
 	public static void addDir(File path, JSTreeNode tree, Map<String, Integer> counts)
 	{
-		File[] dirs = path.listFiles();
-		for(File dir : dirs)
-		{
-			if(dir.isDirectory() && !dir.getPath().equals(path.getPath())) {
-				JSTreeNode dirNode = new JSTreeNode(dir.getName());
-				addDir(dir, dirNode, counts);
-				tree.children.add(dirNode);
-			}
-		}
-
-		Collection<File> files = FileUtils.listFilesAndDirs(path, FileFileFilter.FILE, null);
-		for(File file : files)
-		{
-			if(!file.isDirectory()) {
-				JSTreeNode node = null;
-				if(counts.containsKey(file.getPath())) {
-					int count = counts.get(file.getPath());
-					node = new JSTreeNode(file.getPath(), file.getName() + " (" + count + ")");
-				} else {
-					Logger.info(file.getPath() + " not found in DB");
-					node = new JSTreeNode(file.getPath(), file.getName());
+		if(path.exists()) {
+			File[] dirs = path.listFiles();
+			for(File dir : dirs)
+			{
+				if(dir.isDirectory() && !dir.getPath().equals(path.getPath())) {
+					JSTreeNode dirNode = new JSTreeNode(dir.getName());
+					addDir(dir, dirNode, counts);
+					tree.children.add(dirNode);
 				}
-				node.icon = "glyphicon glyphicon-minus";
-				tree.children.add(node);
+			}
+
+			Collection<File> files = FileUtils.listFilesAndDirs(path, FileFileFilter.FILE, null);
+			for(File file : files)
+			{
+				if(!file.isDirectory()) {
+					JSTreeNode node = null;
+					if(counts.containsKey(file.getPath())) {
+						int count = counts.get(file.getPath());
+						node = new JSTreeNode(file.getPath(), file.getName() + " (" + count + ")");
+					} else {
+						Logger.info(file.getPath() + " not found in DB");
+						node = new JSTreeNode(file.getPath(), file.getName());
+					}
+					node.icon = "glyphicon glyphicon-minus";
+					tree.children.add(node);
+				}
 			}
 		}
 	}
@@ -168,11 +170,14 @@ public class Application extends Controller {
 			
 			if(!results.isEmpty()) {
 				File javaSourceFile = new File((String) results.get(0).get("JavaPath"));
-				String javaSource = FileUtils.readFileToString(javaSourceFile);
-				javaSource = StringEscapeUtils.escapeHtml4(javaSource);
 				String[] javaLines = null;
-				if(javaSource != null) {
-					javaLines = javaSource.split("\\r?\\n");
+				if(javaSourceFile.exists()) {
+					String javaSource = FileUtils.readFileToString(javaSourceFile);
+					javaSource = StringEscapeUtils.escapeHtml4(javaSource);
+					
+					if(javaSource != null) {
+						javaLines = javaSource.split("\\r?\\n");
+					}
 				}
 				
 				for(DBObject result : results) {
@@ -218,6 +223,8 @@ public class Application extends Controller {
 				
 				analysisResult.javaSource = javaLines != null ? Joiner.on("\n").join(javaLines) : "";
 				analysisResult.jimpleSource = jimpleResultSources;
+			} else {
+				Logger.info("empty results");
 			}
 			
 			return ok(Json.toJson(analysisResult));
