@@ -14,5 +14,3 @@ dist
 /RUNNING_PID
 /.settings
 .target/
-conf/application.conf
-build.sbt
