@@ -135,7 +135,9 @@ public class Application extends Controller {
 		JSTreeNode tree = new JSTreeNode(project);
 		
 		String path = projects.get(project);
-		if(path == null) {
+		File file = new File(path);
+		
+        if(path == null || !file.exists()) {
 			loadJimpleTree(project, tree);
 			return ok(Json.toJson(tree));
 		}
@@ -143,7 +145,7 @@ public class Application extends Controller {
 		MongoLoader mongoLoader = new MongoLoader();
 		Map<String, Integer> counts = mongoLoader.getResultCount(project);
 		
-		File file = new File(path);
+		
 		
 		
 		tree.state.opened = true;
