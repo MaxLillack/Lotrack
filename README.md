@@ -5,7 +5,7 @@ Tracking Load-time Configuration Options
 
 ## Abstract ##
 
-coming soon ...
+Highly-configurable software systems are pervasive, although configuration options and their interactions raise complexity of the program and increase maintenance effort. Especially load-time configuration options, such as parameters from command-line options or configuration files, are used with standard programming constructs such as variables and if statements intermixed with the program’s implementation; manually tracking configuration options from the time they are loaded to the point where they may influence control-flow decisions is tedious and error prone. We design and implement Lotrack, an extended static taint analysis to automatically track configuration options. Lotrack derives a configuration map that explains for each code fragment under which configurations it may be executed. An evaluation on Android applications shows that Lotrack yields high accuracy with reasonable performance. We use Lotrack to empirically characterize how much of the implementation of Android apps depends on the platform’s configuration options or interactions of these options.
 
 ## Authors ##
 
@@ -59,4 +59,4 @@ soot-infoflow and soot-infoflow-android are part of [FlowDroid](http://sseblog.e
 
 [Considered repository (full set at time of evaluation)](Evaluation/FDroidLinks.txt)
 
-Thankt to the [FDroid](https://f-droid.org/) project.
+Thanks to the [FDroid](https://f-droid.org/) project.
