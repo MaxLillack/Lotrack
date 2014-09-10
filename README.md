@@ -11,7 +11,7 @@ Highly-configurable software systems are pervasive, although configuration optio
 
 Max Lillack
 
-[Christian Kästner](www.cs.cmu.edu/~ckaestne/)
+[Christian Kästner](https://www.cs.cmu.edu/~ckaestne)
 
 [Eric Bodden](http://www.bodden.de)
 
