@@ -1,0 +1,10 @@
+platypus https://github.com/codehaus/platypus/
+kafkaDispatch https://github.com/DBCDK/kafka-dispatch
+data_consumer https://github.com/fg-netzwerksicherheit/programming-language-barriers-analysis-prototype/tree/master/java/data_consumer
+andsync_server https://github.com/inovex/andsync-server
+proteaj https://github.com/csg-tokyo/proteaj
+adligo https://github.com/adligo/fabricate.adligo.org
+remoterengine https://github.com/rforge/remoterengine/tree/master/pkg
+MGrid https://github.com/shashankkr/MGrid
+jmxetric https://github.com/ganglia/jmxetric
+WarGameofThrones https://github.com/marcelleguine/war-game-of-thrones/
