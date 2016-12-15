@@ -30,8 +30,10 @@ public interface IInfoflow {
 	 */
 	public enum CallgraphAlgorithm {
 		AutomaticSelection,
+		CHA,
 		VTA,
 		RTA,
+		SPARK,
 		OnDemand
 	}
 	

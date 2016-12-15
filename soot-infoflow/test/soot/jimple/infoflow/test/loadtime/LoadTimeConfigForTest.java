@@ -18,6 +18,8 @@ import soot.options.Options;
 
 public class LoadTimeConfigForTest implements IInfoflowConfig {
 
+	public boolean useCoffi = true;
+	
 	@Override
 	public void setSootOptions(Options options) {
 		// explicitly include packages for shorter runtime:
@@ -44,6 +46,9 @@ public class LoadTimeConfigForTest implements IInfoflowConfig {
 		options.set_output_format(Options.output_format_none);
 		Options.v().setPhaseOption("jb", "use-original-names:true");
 		Options.v().set_keep_line_number(true);
+		// Use old coffi backend to get bytecodeoffset tags
+		Options.v().set_keep_offset(true);
+		Options.v().set_coffi(useCoffi);
 	}
 
 }

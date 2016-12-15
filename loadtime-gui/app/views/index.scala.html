@@ -1,4 +1,4 @@
-@(projects : List[String])
+@(projects : List[String], currentProject : String)
 @main("Load-Time Variability") {
 
     <div class="navbar navbar-fixed-top navbar-inverse" role="navigation">
@@ -26,7 +26,7 @@
 				<label for="projects">Project</label>
 				<select id="projects">
 					@for(p <- projects) {
-						<option value="@p">@p</option>
+						<option value="@p" @if(p == currentProject){selected="selected"}>@p</option>
 					}
 				</select>
 			</form>
@@ -36,12 +36,18 @@
 			<div id="tree">
 			</div>
 		</div>
-		<div class="col-xs-9 col-sm-9 col-lg-9">
+		<div class="col-xs-8 col-sm-8 col-lg-8">
 			<pre class="prettyprint linenums" id="javaSourceCode" style="min-height: 500px">
 			</pre>
 			<div id="jimpleSources">
 			</div>
 		</div>
+		<div class="col-xs-1 col-sm-1 col-lg-1">
+			<p id="detailsLine"><p>
+			<img id="loaderIconDetails" src="@routes.Assets.at("images/ajax-loader.gif")" id="loading-indicator" style="display:none"/>
+			<ul id="details">
+			</ul>
+		</div>		
       </div><!--/row-->
     </div><!--/.container-->
     <hr>
@@ -53,8 +59,10 @@
        var loadSourceCode = function(path)
        {
     	   $("#loaderIcon").show();
-           $.post("/loadResult", { "fileName" : path, "project" :  $('#projects  option:selected').val() }, function(data) {
+    	   var project = $('#projects  option:selected').val();
+           $.post("/loadResult", { "fileName" : path, "project" : project }, function(data) {
            	   
+        	   $('#javaSourceCode').removeClass("prettyprinted");
                $('#javaSourceCode').html(data.javaSource);
                
                $("#jimpleSources").empty();
@@ -69,11 +77,58 @@
 	
 	               });
 	               
-	               prettyPrint();
+	               prettyPrint(function() {
+	               	   
+	               	   // Prettyprinting done, add clickable line details
+		               var preIndex = 0;
+		               $.each(data.jimpleSource, function(key, value) {
+		                   var pre =  $("#jimpleSources>pre:eq("+preIndex+")");
+		                   console.log("length " + pre.find("li").length);
+		                   pre.find("li").click(function(event) {
+		                       var line = $(event.target).parent().closest('li');
+		                       // find line number
+		                       var lineNumber = (line.index() + 1);
+		                       // project name
+		                       var project = $('#projects  option:selected').val();
+		                       // file name == key
+		                       loadLineDetails(key, lineNumber);
+		                   }); 
+		                   
+		                   preIndex++;
+		               });
+	               
+	               });
+	               
+
+
                }
                
                $("#loaderIcon").hide();
            });
+       }
+
+       var loadLineDetails = function(path, lineNumber) {
+       	 var project = $('#projects  option:selected').val();
+       
+          // show loading icon
+          $("#loaderIconDetails").show();
+          
+          console.log("app " + project + " path " + path + " lineNumber " + lineNumber);
+          $("#details").empty();
+          $("#detailsLine").empty();
+          
+          $.get("/detailedLineInfo", { "app" : project, "className" : path, "lineNumber": lineNumber }, function(data) {
+          	$("#detailsLine").text("Line " + lineNumber + " [" + data.details.length + "] In slice: " + data.inSlice);
+          	$.each(data.details, function(index, entry) {
+          		$("#details").append("<li style=\"white-space: nowrap;\">" + entry + "</li>");
+          	});
+          }).fail(function() {
+          	$("#detailsLine").text("Error loading info for line " + lineNumber + ".");
+          			
+          }).always(function() {
+          	$("#loaderIconDetails").hide();
+          });
+          
        }
     
 	    $('#tree')
@@ -93,7 +148,9 @@
 			  'data' : {
 			    'url' : '/fileTree',
 			    'data' : function(node) {
-			    	return {'project' : $('#projects  option:selected').val() };
+			    	var project = $('#projects  option:selected').val();
+			    	history.pushState(null, null, "/project/" + project);
+			    	return {'project' : project };
 			    }
 			  },
 			  'multiple' : false

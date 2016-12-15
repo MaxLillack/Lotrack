@@ -9,41 +9,44 @@ import soot.jimple.Stmt;
  * @author Steven Arzt
  */
 public class SourceContext implements Cloneable {
-	private final Value value;
+	private final AccessPath accessPath;
 	private final Stmt stmt;
 	private final Object userData;
 	private final Abstraction symbolic;
 	
-	public SourceContext(Value value, Stmt stmt) {
-		this.value = value;
+	private int hashCode = 0;
+	
+	
+	public SourceContext(AccessPath accessPath, Stmt stmt) {
+		this.accessPath = accessPath;
 		this.stmt = stmt;
 		this.symbolic = null;
 		this.userData = null;
 	}
 	
-	public SourceContext(Value value, Stmt stmt, Object userData) {
-		this.value = value;
+	public SourceContext(AccessPath accessPath, Stmt stmt, Object userData) {
+		this.accessPath = accessPath;
 		this.stmt = stmt;
 		this.symbolic = null;
 		this.userData = userData;
 	}
 
 	public SourceContext(Abstraction symbolic) {
-		this.value = null;
+		this.accessPath = null;
 		this.stmt = null;
 		this.symbolic = symbolic;
 		this.userData = null;
 	}
 	
 	public SourceContext(Abstraction symbolic, Object userData) {
-		this.value = null;
+		this.accessPath = null;
 		this.stmt = null;
 		this.symbolic = symbolic;
 		this.userData = userData;
 	}
 
-	public Value getValue() {
-		return this.value;
+	public AccessPath getAccessPath() {
+		return this.accessPath;
 	}
 	
 	public Stmt getStmt() {
@@ -60,13 +63,18 @@ public class SourceContext implements Cloneable {
 
 	@Override
 	public int hashCode() {
+		// Don't cache because userData (FeatureInfo) may change
+//		if (hashCode != 0)
+//			return hashCode;
+//		
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((stmt == null) ? 0 : stmt.hashCode());
-		result = prime * result + ((value == null) ? 0 : value.hashCode());
+//		result = prime * result + ((stmt == null) ? 0 : stmt.hashCode());
+		result = prime * result + ((accessPath  == null) ? 0 : accessPath .hashCode());
 		result = prime * result + ((userData == null) ? 0 : userData.hashCode());
 		// bug: possible loop if this.symbolic equals an abstraction with this in its sourceContext
-		//result = prime * result + ((symbolic == null) ? 0 : symbolic.hashCode());
+		result = prime * result + ((symbolic == null) ? 0 : symbolic.hashCode());
+		hashCode = result;
 		return result;
 	}
 
@@ -77,15 +85,15 @@ public class SourceContext implements Cloneable {
 		if (obj == null || getClass() != obj.getClass())
 			return false;
 		SourceContext other = (SourceContext) obj;
-		if (stmt == null) {
-			if (other.stmt != null)
+//		if (stmt == null) {
+//			if (other.stmt != null)
+//				return false;
+//		} else if (!stmt.equals(other.stmt))
+//			return false;
+		if (accessPath  == null) {
+			if (other.accessPath  != null)
 				return false;
-		} else if (!stmt.equals(other.stmt))
-			return false;
-		if (value == null) {
-			if (other.value != null)
-				return false;
-		} else if (!value.equals(other.value))
+		} else if (!accessPath .equals(other.accessPath ))
 			return false;
 		if (userData == null) {
 			if (other.userData != null)
@@ -102,7 +110,7 @@ public class SourceContext implements Cloneable {
 	
 	@Override
 	public SourceContext clone() {
-		SourceContext sc = new SourceContext(value, stmt, userData);
+		SourceContext sc = new SourceContext(accessPath, stmt, userData);
 		assert sc.equals(this);
 		return sc;
 	}
@@ -111,6 +119,6 @@ public class SourceContext implements Cloneable {
 	public String toString() {
 		if (symbolic != null)
 			return "SYMBOLIC: " + symbolic;
-		return value.toString();
+		return accessPath.toString();
 	}
 }

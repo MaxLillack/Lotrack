@@ -187,7 +187,8 @@ public class EasyTaintWrapper extends AbstractTaintWrapper implements Cloneable 
 		
 		if (stmt.getInvokeExpr() instanceof InstanceInvokeExpr) {
 			InstanceInvokeExpr iiExpr = (InstanceInvokeExpr) stmt.getInvokeExpr();			
-			if (iiExpr.getBase().equals(taintedPath.getPlainValue())) {
+			// Changed to more replaxed taint creation: no taints if only a field within taintedPath is tainted
+			if (/*taintedPath.getFieldCount() == 0 && */iiExpr.getBase().equals(taintedPath.getPlainValue())) {
 				// If the base object is tainted, we have to check whether we must kill the taint
 				Set<String> killMethods = this.killList.get(method.getDeclaringClass().getName());
 				if (killMethods != null && killMethods.contains(subSig))

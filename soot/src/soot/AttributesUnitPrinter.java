@@ -44,7 +44,7 @@ public class AttributesUnitPrinter {
 	public void endUnit( Unit u ) {
 		int endStmtOffset = output().length() - lastNewline;
         //G.v().out.println("u: "+u.toString());
-		if (u.getTag("JimpleLineNumberTag") == null){
+		if (hasTag(u)){
             //G.v().out.println("u: "+u.toString()+" has tag");
 			u.addTag( new JimpleLineNumberTag( startLn, currentLn ));
 		}
@@ -77,9 +77,8 @@ public class AttributesUnitPrinter {
 	}
 	
 	private boolean hasColorTag(Host h) {
-		Iterator it = h.getTags().iterator();
-		while (it.hasNext()){
-			if (it.next() instanceof ColorTag) return true;
+		for ( Tag t : h.getTags() ) {
+			if (t instanceof ColorTag) return true;
 		}
 		return false;
 	}

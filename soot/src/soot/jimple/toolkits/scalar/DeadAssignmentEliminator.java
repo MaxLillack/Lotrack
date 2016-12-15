@@ -29,17 +29,55 @@
 
 
 package soot.jimple.toolkits.scalar;
-import soot.options.*;
-
-import soot.*;
-import soot.jimple.*;
-import soot.toolkits.scalar.*;
-import soot.util.*;
-import soot.toolkits.graph.*;
-import java.util.*;
-
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import soot.Body;
+import soot.BodyTransformer;
+import soot.G;
+import soot.IntType;
+import soot.Local;
+import soot.LongType;
+import soot.NullType;
+import soot.PhaseOptions;
+import soot.RefType;
+import soot.Scene;
+import soot.Singletons;
+import soot.Timers;
+import soot.Trap;
+import soot.Type;
+import soot.Unit;
+import soot.Value;
+import soot.ValueBox;
+import soot.jimple.ArrayRef;
+import soot.jimple.AssignStmt;
+import soot.jimple.BinopExpr;
+import soot.jimple.CastExpr;
+import soot.jimple.DivExpr;
+import soot.jimple.FieldRef;
+import soot.jimple.InstanceFieldRef;
+import soot.jimple.IntConstant;
+import soot.jimple.InvokeExpr;
+import soot.jimple.Jimple;
+import soot.jimple.LongConstant;
+import soot.jimple.NewArrayExpr;
+import soot.jimple.NewExpr;
+import soot.jimple.NewMultiArrayExpr;
+import soot.jimple.NopStmt;
+import soot.jimple.NullConstant;
+import soot.jimple.RemExpr;
+import soot.jimple.Stmt;
+import soot.options.Options;
+import soot.toolkits.scalar.LocalDefs;
+import soot.toolkits.scalar.LocalUses;
+import soot.toolkits.scalar.UnitValueBoxPair;
+import soot.util.Chain;
 
 public class DeadAssignmentEliminator extends BodyTransformer
 {
@@ -81,7 +119,27 @@ public class DeadAssignmentEliminator extends BodyTransformer
 			Unit s = it.next();
 			boolean isEssential = true;
 			
-			if (s instanceof AssignStmt) {
+			if (s instanceof NopStmt) {
+				// Hack: do not remove nop if is is used for a Trap
+				// which is at the very end of the code.
+				boolean removeNop = it.hasNext();
+				
+				if (!removeNop) { 
+					removeNop = true;
+					for (Trap t : b.getTraps()) {
+						if (t.getEndUnit() == s) {
+							removeNop = false;
+							break;
+						}
+					}
+				}
+				
+				if (removeNop) {
+					it.remove();
+					continue;
+				}
+			}
+			else if (s instanceof AssignStmt) {
 				AssignStmt as = (AssignStmt) s;
 				
 				Value lhs = as.getLeftOp();
@@ -97,31 +155,35 @@ public class DeadAssignmentEliminator extends BodyTransformer
 					(!eliminateOnlyStackLocals || 
 						((Local) lhs).getName().startsWith("$")
 						|| lhs.getType() instanceof NullType))
-				{				
+				{
 				
 					isEssential = false;
 					
 					if ( !checkInvoke ) {
 						checkInvoke |= as.containsInvokeExpr();
 					}
-
-					if (rhs instanceof InvokeExpr || 
+					
+					if (rhs instanceof CastExpr) {
+						// CastExpr          : can trigger ClassCastException, but null-casts never fail
+						CastExpr ce = (CastExpr) rhs;
+						Type t = ce.getCastType();
+						Value v = ce.getOp();
+						isEssential = !(t instanceof RefType && v == NullConstant.v());
+					}
+					else if (rhs instanceof InvokeExpr || 
 					    rhs instanceof ArrayRef || 
-					    rhs instanceof CastExpr ||
 					    rhs instanceof NewExpr ||
 					    rhs instanceof NewArrayExpr ||
 					    rhs instanceof NewMultiArrayExpr )
 					{
 					   // ArrayRef          : can have side effects (like throwing a null pointer exception)
 					   // InvokeExpr        : can have side effects (like throwing a null pointer exception)
-					   // CastExpr          : can trigger ClassCastException
 					   // NewArrayExpr      : can throw exception
 					   // NewMultiArrayExpr : can throw exception
 					   // NewExpr           : can trigger class initialization					   
 						isEssential = true;
 					}
-					
-					if (rhs instanceof FieldRef) {
+					else if (rhs instanceof FieldRef) {
 						// Can trigger class initialization
 						isEssential = true;
 					
@@ -138,24 +200,32 @@ public class DeadAssignmentEliminator extends BodyTransformer
 							isEssential = (isStatic || thisLocal != ifr.getBase());			
 						} 
 					}
-
-
-					if (rhs instanceof DivExpr || rhs instanceof RemExpr) {
+					else if (rhs instanceof DivExpr || rhs instanceof RemExpr) {
 						BinopExpr expr = (BinopExpr) rhs;
-						
+
 						Type t1 = expr.getOp1().getType();
 						Type t2 = expr.getOp2().getType();
-						
-						// Can trigger a division by zero   
+
+						// Can trigger a division by zero
 						isEssential  = IntType.v().equals(t1) || LongType.v().equals(t1)
-						            || IntType.v().equals(t2) || LongType.v().equals(t2);							
+						            || IntType.v().equals(t2) || LongType.v().equals(t2);	
+						
+						if (isEssential && IntType.v().equals(t2)) {
+							Value v = expr.getOp2();
+							if (v instanceof IntConstant) {
+								IntConstant i = (IntConstant) v;
+								isEssential = (i.value == 0);
+							}
+						}
+						if (isEssential && LongType.v().equals(t2)) {
+							Value v = expr.getOp2();
+							if (v instanceof LongConstant) {
+								LongConstant l = (LongConstant) v;
+								isEssential = (l.value == 0);
+							}
+						}
 					}
 				}
-			}
-			
-			if (s instanceof NopStmt) {
-				it.remove();
-				continue;
 			}
 			
 			if (isEssential) {
@@ -168,21 +238,21 @@ public class DeadAssignmentEliminator extends BodyTransformer
 		if ( checkInvoke || !allEssential ) {		
 			// Add all the statements which are used to compute values
 			// for the essential statements, recursively 
-			ExceptionalUnitGraph graph = new ExceptionalUnitGraph(b);
-		
-			LocalDefs defs = new SmartLocalDefs(graph, new SimpleLiveLocals(graph));
-			LocalUses uses = new SimpleLocalUses(graph, defs);
-	
+			
+	        final LocalDefs localDefs = LocalDefs.Factory.newLocalDefs(b);	        
+			
 			if ( !allEssential ) {		
-				Set<Unit> essential = new HashSet<Unit>(graph.size());
+				Set<Unit> essential = new HashSet<Unit>(b.getUnits().size());
 				while (!q.isEmpty()) {
 					Unit s = q.removeFirst();			
-					if ( essential.add(s) ) {			
+					if ( essential.add(s) ) {
 						for (ValueBox box : s.getUseBoxes()) {
 							Value v = box.getValue();
 							if (v instanceof Local) {
 								Local l = (Local) v;
-								q.addAll(defs.getDefsOfAt(l, s));
+								List<Unit> defs = localDefs.getDefsOfAt(l, s);
+								if (defs != null)
+									q.addAll(defs);
 							}
 						}
 					}
@@ -191,7 +261,8 @@ public class DeadAssignmentEliminator extends BodyTransformer
 				units.retainAll(essential);		
 			}
 		
-			if ( checkInvoke ) {		
+			if ( checkInvoke ) {
+				final LocalUses localUses = LocalUses.Factory.newLocalUses(b, localDefs);
 				// Eliminate dead assignments from invokes such as x = f(), where
 				//	x is no longer used
 		 
@@ -202,7 +273,7 @@ public class DeadAssignmentEliminator extends BodyTransformer
 						if (s.containsInvokeExpr()) {					
 							// Just find one use of l which is essential 
 							boolean deadAssignment = true;
-							for (UnitValueBoxPair pair : uses.getUsesOf(s)) {
+							for (UnitValueBoxPair pair : localUses.getUsesOf(s)) {
 								if (units.contains(pair.unit)) {
 									deadAssignment = false;
 									break;
@@ -220,6 +291,10 @@ public class DeadAssignmentEliminator extends BodyTransformer
 					Stmt newInvoke = Jimple.v().newInvokeStmt(s.getInvokeExpr());
 					newInvoke.addAllTagsOf(s);					
 					units.swapWith(s, newInvoke);
+					
+					// If we have a callgraph, we need to fix it
+					if (Scene.v().hasCallGraph())
+						Scene.v().getCallGraph().swapEdgesOutOf(s, newInvoke);
 				}
 			}
 		}

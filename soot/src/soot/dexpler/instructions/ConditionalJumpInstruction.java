@@ -73,6 +73,7 @@ public abstract class ConditionalJumpInstruction extends JumpInstruction impleme
         IfStmt s = ifStatement(body);
         body.getBody().getUnits().swapWith(markerUnit, s); //insertAfter(s, markerUnit);
         setUnit(s);
+        addTags(s);
     }
 
     /**

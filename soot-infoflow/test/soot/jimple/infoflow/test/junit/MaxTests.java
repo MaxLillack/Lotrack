@@ -73,5 +73,18 @@ public class MaxTests extends JUnitTests {
 		infoflow.computeInfoflow(appPath, libPath, epoints, sources, sinks);
 		checkInfoflow(infoflow, 1);
 	}
-
+	
+	@Test(timeout = 300000)
+	public void test3() {
+		Infoflow infoflow = initInfoflow();
+		infoflow.setAliasingAlgorithm(AliasingAlgorithm.PtsBased);
+		infoflow.setTaintWrapper(new TestWrapper());
+		List<String> epoints = new ArrayList<String>();
+		epoints.add("<soot.jimple.infoflow.test.MaxTest: void test3()>");
+		infoflow.computeInfoflow(appPath, libPath, epoints, sources, sinks);
+		
+		
+		
+		checkInfoflow(infoflow, 1);
+	}
 }

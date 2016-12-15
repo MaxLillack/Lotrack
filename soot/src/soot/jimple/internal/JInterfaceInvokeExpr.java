@@ -33,15 +33,19 @@ package soot.jimple.internal;
 
 import soot.*;
 import soot.jimple.*;
+
 import java.util.*;
 
 public class JInterfaceInvokeExpr extends AbstractInterfaceInvokeExpr
-{
-    public JInterfaceInvokeExpr(Value base, SootMethodRef methodRef, List args)
+{	
+    public JInterfaceInvokeExpr(Value base, SootMethodRef methodRef, List<? extends Value> args)
     {
-        super(Jimple.v().newLocalBox(base), methodRef,
-             new ValueBox[args.size()]);
+        super(Jimple.v().newLocalBox(base), methodRef, new ValueBox[args.size()]);
 
+        //Check that the method's class is resolved enough
+        //CheckLevel returns without doing anything because we can be not 'done' resolving
+        methodRef.declaringClass().checkLevelIgnoreResolving(SootClass.HIERARCHY);
+        //now check if the class is valid
         if(!methodRef.declaringClass().isInterface() && !methodRef.declaringClass().isPhantom()) {
         	throw new RuntimeException("Trying to create interface invoke expression for non-interface type: " +
         			methodRef.declaringClass() +
@@ -49,12 +53,12 @@ public class JInterfaceInvokeExpr extends AbstractInterfaceInvokeExpr
         }
 
         for(int i = 0; i < args.size(); i++)
-            this.argBoxes[i] = Jimple.v().newImmediateBox((Value) args.get(i));
-    }
-
+            this.argBoxes[i] = Jimple.v().newImmediateBox(args.get(i));
+    }    
+    
     public Object clone() 
     {
-        List argList = new ArrayList(getArgCount());
+        List<Value> argList = new ArrayList<Value>(getArgCount());
 
         for(int i = 0; i < getArgCount(); i++) {
             argList.add(i, Jimple.cloneIfNecessary(getArg(i)));

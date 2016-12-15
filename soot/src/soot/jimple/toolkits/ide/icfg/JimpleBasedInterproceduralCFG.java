@@ -24,9 +24,10 @@ import heros.SynchronizedBy;
 import heros.ThreadSafe;
 import heros.solver.IDESolver;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 import soot.Body;
 import soot.MethodOrMethodContext;
@@ -64,7 +65,7 @@ public class JimpleBasedInterproceduralCFG extends AbstractJimpleBasedICFG {
 				@Override
 				public boolean want(Edge e) {				
 					return e.kind().isExplicit() || e.kind().isThread() || e.kind().isExecutor()
-							|| e.kind().isAsyncTask() || e.kind().isClinit();
+							|| e.kind().isAsyncTask() || e.kind().isClinit() || e.kind().isPrivileged();
 				}
 			});
 		}
@@ -74,66 +75,85 @@ public class JimpleBasedInterproceduralCFG extends AbstractJimpleBasedICFG {
 	protected final CallGraph cg;
 	
 	@SynchronizedBy("by use of synchronized LoadingCache class")
-	protected final LoadingCache<Unit,Set<SootMethod>> unitToCallees =
-			IDESolver.DEFAULT_CACHE_BUILDER.build( new CacheLoader<Unit,Set<SootMethod>>() {
+	protected final LoadingCache<Unit,Collection<SootMethod>> unitToCallees =
+			IDESolver.DEFAULT_CACHE_BUILDER.build( new CacheLoader<Unit,Collection<SootMethod>>() {
 				@Override
-				public Set<SootMethod> load(Unit u) throws Exception {
-					Set<SootMethod> res = new LinkedHashSet<SootMethod>();
+				public Collection<SootMethod> load(Unit u) throws Exception {
+					ArrayList<SootMethod> res = null;
 					//only retain callers that are explicit call sites or Thread.start()
 					Iterator<Edge> edgeIter = new EdgeFilter().wrap(cg.edgesOutOf(u));					
 					while(edgeIter.hasNext()) {
 						Edge edge = edgeIter.next();
 						SootMethod m = edge.getTgt().method();
-						if(m.hasActiveBody())
+						if(m.hasActiveBody()) {
+							if (res == null)
+								res = new ArrayList<SootMethod>();
 							res.add(m);
+						}
 						else if(IDESolver.DEBUG) 
 							System.err.println("Method "+m.getSignature()+" is referenced but has no body!");
 					}
-					return res; 
+					
+					if (res != null) {
+						res.trimToSize();
+						return res;
+					}
+					else
+						return Collections.emptySet();
 				}
 			});
 
 	@SynchronizedBy("by use of synchronized LoadingCache class")
-	protected final LoadingCache<SootMethod,Set<Unit>> methodToCallers =
-			IDESolver.DEFAULT_CACHE_BUILDER.build( new CacheLoader<SootMethod,Set<Unit>>() {
+	protected final LoadingCache<SootMethod,Collection<Unit>> methodToCallers =
+			IDESolver.DEFAULT_CACHE_BUILDER.build( new CacheLoader<SootMethod,Collection<Unit>>() {
 				@Override
-				public Set<Unit> load(SootMethod m) throws Exception {
-					Set<Unit> res = new LinkedHashSet<Unit>();					
+				public Collection<Unit> load(SootMethod m) throws Exception {
+					ArrayList<Unit> res = new ArrayList<Unit>();
 					//only retain callers that are explicit call sites or Thread.start()
 					Iterator<Edge> edgeIter = new EdgeFilter().wrap(cg.edgesInto(m));					
 					while(edgeIter.hasNext()) {
 						Edge edge = edgeIter.next();
-						res.add(edge.srcUnit());			
+						res.add(edge.srcUnit());
 					}
+					res.trimToSize();
 					return res;
 				}
 			});
-
+	
 	public JimpleBasedInterproceduralCFG() {
-		cg = Scene.v().getCallGraph();		
+		this(true);
+	}
+	
+	public JimpleBasedInterproceduralCFG(boolean enableExceptions) {
+		super(enableExceptions);
+		cg = Scene.v().getCallGraph();
 		initializeUnitToOwner();
 	}
 
 	protected void initializeUnitToOwner() {
 		for(Iterator<MethodOrMethodContext> iter = Scene.v().getReachableMethods().listener(); iter.hasNext(); ) {
 			SootMethod m = iter.next().method();
-			if(m.hasActiveBody()) {
-				Body b = m.getActiveBody();
-				PatchingChain<Unit> units = b.getUnits();
-				for (Unit unit : units) {
-					unitToOwner.put(unit, b);
-				}
+			initializeUnitToOwner(m);
+		}
+	}
+	
+	public void initializeUnitToOwner(SootMethod m) {
+		if(m.hasActiveBody()) {
+			Body b = m.getActiveBody();
+			PatchingChain<Unit> units = b.getUnits();
+			for (Unit unit : units) {
+				unitToOwner.put(unit, b);
 			}
 		}
 	}
 
 	@Override
-	public Set<SootMethod> getCalleesOfCallAt(Unit u) {
+	public Collection<SootMethod> getCalleesOfCallAt(Unit u) {
 		return unitToCallees.getUnchecked(u);
 	}
 
 	@Override
-	public Set<Unit> getCallersOf(SootMethod m) {
+	public Collection<Unit> getCallersOf(SootMethod m) {
 		return methodToCallers.getUnchecked(m);
 	}
 

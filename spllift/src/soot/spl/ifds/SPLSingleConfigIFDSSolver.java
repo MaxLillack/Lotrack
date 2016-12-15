@@ -16,7 +16,7 @@ import soot.Unit;
 import soot.Value;
 import soot.tagkit.Host;
 
-public class SPLSingleConfigIFDSSolver<D> extends IFDSSolver<Unit,D,SootMethod,ExtendedInterproceduralCFG,Value> {
+public class SPLSingleConfigIFDSSolver<D> extends IFDSSolver<Unit,D,SootMethod,ExtendedInterproceduralCFG> {
 
 	/**
 	 * Creates a solver for the given problem. The solver must then be started by calling

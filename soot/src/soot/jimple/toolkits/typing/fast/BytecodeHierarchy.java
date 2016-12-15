@@ -20,8 +20,23 @@
  */
 package soot.jimple.toolkits.typing.fast;
 
-import java.util.*;
-import soot.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
+
+import soot.ArrayType;
+import soot.FloatType;
+import soot.IntType;
+import soot.IntegerType;
+import soot.NullType;
+import soot.PrimType;
+import soot.RefType;
+import soot.Scene;
+import soot.SootClass;
+import soot.Type;
 
 /**
  * @author Ben Bellamy
@@ -102,12 +117,23 @@ public class BytecodeHierarchy implements IHierarchy
 			return Collections.<Type>singletonList(a);
 		else if ( a instanceof IntegerType && b instanceof IntegerType )
 			return Collections.<Type>singletonList(IntType.v());
+		
+		// Implicit type widening: Integer+Float -> Float
+		else if ( a instanceof IntegerType && b instanceof FloatType )
+			return Collections.<Type>singletonList(FloatType.v());
+		else if ( b instanceof IntegerType && a instanceof FloatType )
+			return Collections.<Type>singletonList(FloatType.v());
+		
+		// Disallow type sharing for primitives in general 
 		else if ( a instanceof PrimType || b instanceof PrimType )
 			return Collections.<Type>emptyList();
+		
+		// Null reference handling
 		else if ( a instanceof NullType )
 			return Collections.<Type>singletonList(b);
 		else if ( b instanceof NullType )
 			return Collections.<Type>singletonList(a);
+		
 		// a and b are both ArrayType or RefType
 		else if ( a instanceof ArrayType && b instanceof ArrayType )
 		{
@@ -116,7 +142,7 @@ public class BytecodeHierarchy implements IHierarchy
 			Collection<Type> ts;
 			
 			// Primitive arrays are not covariant but all other arrays are
-			if ( eta instanceof PrimType || eta instanceof PrimType )
+			if ( eta instanceof PrimType || etb instanceof PrimType )
 				ts = Collections.<Type>emptyList();
 			else
 				ts = lcas_(eta, etb);
@@ -124,6 +150,8 @@ public class BytecodeHierarchy implements IHierarchy
 			LinkedList<Type> r = new LinkedList<Type>();
 			if ( ts.isEmpty() )
 			{
+				// From Java Language Spec 2nd ed., Chapter 10, Arrays
+				r.add(RefType.v("java.lang.Object"));
 				r.add(RefType.v("java.io.Serializable"));
 				r.add(RefType.v("java.lang.Cloneable"));
 			}
@@ -226,16 +254,16 @@ public class BytecodeHierarchy implements IHierarchy
 			child, ancestor);
 	}
 	
-	private static LinkedList<RefType> superclassPath(RefType t)
+	private static Deque<RefType> superclassPath(RefType t)
 	{
-		LinkedList<RefType> r = new LinkedList<RefType>();
+		Deque<RefType> r = new LinkedList<RefType>();
 		r.addFirst(t);
 		
 		SootClass sc = t.getSootClass();
 		while ( sc.hasSuperclass() )
 		{
 			sc = sc.getSuperclass();
-			r.addFirst((RefType)sc.getType());
+			r.addFirst(sc.getType());
 		}
 		
 		return r;
@@ -243,8 +271,11 @@ public class BytecodeHierarchy implements IHierarchy
 	
 	public static RefType lcsc(RefType a, RefType b)
 	{
-		LinkedList<RefType> pathA = superclassPath(a),
-			pathB = superclassPath(b);
+		if (a == b)
+			return a;
+		
+		Deque<RefType> pathA = superclassPath(a);
+		Deque<RefType> pathB = superclassPath(b);
 		RefType r = null;
 		while ( !(pathA.isEmpty() || pathB.isEmpty()) 
 			&& TypeResolver.typesEqual(pathA.getFirst(), pathB.getFirst()) )

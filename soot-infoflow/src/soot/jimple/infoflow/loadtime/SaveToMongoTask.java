@@ -1,5 +1,6 @@
 package soot.jimple.infoflow.loadtime;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -16,17 +17,17 @@ import soot.Unit;
 import soot.jimple.infoflow.LoadTimeInfoflow;
 import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.data.AccessPath;
+import soot.spl.ifds.CachedZ3Solver;
 import soot.spl.ifds.Constraint;
+import soot.spl.ifds.IConstraint;
 import soot.spl.ifds.SPLIFDSSolver;
 import soot.tagkit.JimpleLineNumberTag;
 import soot.tagkit.SourceFileTag;
 import soot.tagkit.Tag;
 
 import com.google.common.base.Splitter;
-import com.google.common.collect.Table;
-import com.google.common.collect.Table.Cell;
+import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 
 public class SaveToMongoTask implements Runnable {
@@ -37,41 +38,58 @@ public class SaveToMongoTask implements Runnable {
 	private LoadTimeInfoflow infoflow;
 	private String basePath;
 	private SPLIFDSSolver<Abstraction,AccessPath> splSolver;
-	private int knownFeaturesOffset;
-	private Map<Constraint<String>, String> prettyConstraints;
+	private Map<IConstraint, String> prettyConstraints;
 	private FeatureNames featureNames;
 	private MongoLoader mongoLoader;
 	private List<DBObject> logObjects;
 	private List<DBObject> objects;
+	private Map<String, String> jimpleSources;
+	private LoadTimeSourceSinkManager sourceSinkManager;
 	
 	public SaveToMongoTask(LoadTimeInfoflow infoflow, 
 						   String basePath, 
 						   SPLIFDSSolver<Abstraction,AccessPath> splSolver, 
-						   int knownFeaturesOffset,
-						   Map<Constraint<String>, String> prettyConstraints,
+						   Map<IConstraint, String> prettyConstraints,
 						   FeatureNames featureNames, 
 						   Unit unit,
 						   MongoLoader mongoLoader,
 						   List<DBObject> logObjects,
-						   List<DBObject> objects) {
+						   List<DBObject> objects,
+						   Map<String, String> jimpleSources,
+						   LoadTimeSourceSinkManager sourceSinkManager) {
+		
+		if(mongoLoader == null)
+		{
+			throw new IllegalArgumentException("Parameter mongoLoader must not be null.");
+		}
+		
 		this.infoflow = infoflow;
 		this.unit = unit;
 		this.basePath = basePath;
 		this.splSolver = splSolver;
-		this.knownFeaturesOffset = knownFeaturesOffset;
 		this.prettyConstraints = prettyConstraints;
 		this.featureNames = featureNames;
 		this.mongoLoader = mongoLoader;
 		this.logObjects = logObjects;
 		this.objects = objects;
+		this.jimpleSources = jimpleSources;
+		this.sourceSinkManager = sourceSinkManager;
 	}
 	
 	private String getJavaPath(SootClass sootClass, String basePath) {
 		SourceFileTag sourceFileTag = (SourceFileTag) sootClass.getTag("SourceFileTag");
 		if(sourceFileTag != null) {
-			return basePath 
-				   + sootClass.getPackageName().replace(".", "\\") 
-				   + "\\" + sourceFileTag.getSourceFile();
+			
+			StringBuilder path = new StringBuilder();
+			path.append(basePath);
+			path.append(sootClass.getPackageName().replace(".", "\\"));
+			
+			if(!path.toString().endsWith("\\")) {
+				path.append("\\");
+			}
+			path.append(sourceFileTag.getSourceFile());
+			
+			return path.toString();
 		} else {
 			return null;
 		}
@@ -101,7 +119,17 @@ public class SaveToMongoTask implements Runnable {
 		
 		
 		if(lineNumber == -1 && className != null) {
-			String jimpleSource = mongoLoader.getJimpleSource(className);
+			
+			if(!jimpleSources.containsKey(className))
+			{
+				String jimpleSource = mongoLoader.getJimpleSource(className);
+				if(jimpleSource != null)
+				{
+					jimpleSources.put(className, jimpleSource);
+				}
+				
+			}
+			String jimpleSource = jimpleSources.get(className);
 			
 			if(jimpleSource != null) {
 				// Fallback - Search in source
@@ -130,8 +158,8 @@ public class SaveToMongoTask implements Runnable {
 	private void createLogObject(SootClass sootClass)
 	{
 		
-		Map<Abstraction, Constraint<String>> results = splSolver.resultsAt(unit);
-		for(Entry<Abstraction, Constraint<String>> cell : results.entrySet())
+		Map<Abstraction, IConstraint> results = splSolver.resultsAt(unit);
+		for(Entry<Abstraction, IConstraint> cell : results.entrySet())
 		{
 			BasicDBObject row = new BasicDBObject();
 			row.append("class", sootClass.getName());
@@ -143,12 +171,12 @@ public class SaveToMongoTask implements Runnable {
 		}
 	}
 	
-	public String prettyPrintConstraint(Constraint<String> constraint)
+	public String prettyPrintConstraint(IConstraint constraint)
 	{
-		if(constraint == Constraint.<String>trueValue()) {
+		if(constraint == Constraint.trueValue()) {
 			return "true";
 		}
-		if(constraint == Constraint.<String>falseValue()) {
+		if(constraint == Constraint.falseValue()) {
 			return "false";
 		}
 
@@ -177,12 +205,8 @@ public class SaveToMongoTask implements Runnable {
 		SootClass sootClass = sootMethod.getDeclaringClass();
 		
 		boolean skipClass = false;
-
-		
-		if(sootClass.getName().startsWith("java.")
-		  || sootClass.getName().startsWith("sun.")) {
-			
-			skipClass =true;
+		if(sootClass.getName().startsWith("java.") || sootClass.getName().startsWith("sun.")) {
+			skipClass = true;
 		}
 
 		if(!skipClass) {
@@ -190,10 +214,10 @@ public class SaveToMongoTask implements Runnable {
 			String javaPath = getJavaPath(sootClass, basePath);
 			String jimplePath = getJimplePath(sootClass);
 
-			Constraint<String> orResult;
-			synchronized (Constraint.FACTORY) {
+			IConstraint orResult;
+//			synchronized (Constraint.FACTORY) {
 				orResult = splSolver.orResult(unit);
-			}
+//			}
 			
 			int jimpleLineNumber = getJimpleLineNumber(unit, sootMethod.getDeclaringClass().getName());
 			int javaLineNumber = getJavaLineNumer(unit);
@@ -205,16 +229,35 @@ public class SaveToMongoTask implements Runnable {
 			
 			row.append("JavaLineNo", javaLineNumber);
 			row.append("JimpleLineNo", jimpleLineNumber);
-			
+
 			String orResultString = orResult.toString();
-			row.append("Constraint", orResultString.length() > 100 ? orResultString.substring(0, 99) + "..." : orResultString);
+			row.append("Constraint", orResultString.length() > 2000 ? orResultString.substring(0, 1999) + "..." : orResultString);
 			String prettyConstraint = prettyPrintConstraint(orResult);
-			row.append("ConstraintPretty", prettyConstraint.length() > 100 ? prettyConstraint.substring(0, 99) + "..." : prettyConstraint);
+			row.append("ConstraintPretty", prettyConstraint.length() > 2000 ? prettyConstraint.substring(0, 1999) + "..." : prettyConstraint);
 			
 			row.append("JavaPath", javaPath);
 			row.append("JimplePath", jimplePath);
 			
 			row.append("Unit", unit.toString());
+			
+			BasicDBList indexList = new BasicDBList();
+			indexList.addAll(TestHelper.getBytecodeIndex(unit));
+			
+			row.append("bytecodeIndexes", indexList);
+			row.append("methodBytecodeSignatureJoanaStyle", TestHelper.getMethodByteCodeJoanaStyle(sootMethod));
+			
+			String sourceInfo = TestHelper.getSourceInfo(unit, sourceSinkManager, infoflow, featureNames);
+			row.append("isSource", sourceInfo != null);
+			if(sourceInfo != null)
+			{
+				row.append("Option", sourceInfo);
+			}
+			
+			
+			row.append("usedTerms", mongoLoader.getTerms(orResultString));
+			
+			row.append("version", 2);
+			
 			objects.add(row);
 
 //			if(sootMethod.getName().contains("pickFileSimple")) {

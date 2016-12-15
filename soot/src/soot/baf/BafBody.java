@@ -29,9 +29,9 @@
 
 package soot.baf;
 import soot.options.*;
-
 import soot.*;
 import soot.jimple.*;
+
 import java.util.*;
 
 public class BafBody extends Body
@@ -48,36 +48,27 @@ public class BafBody extends Body
         super(m);
     }
 
-    public BafBody(Body body, Map options)
+    public BafBody(Body body, Map<String,String> options)
     {
         super(body.getMethod());
 
         if(Options.v().verbose())
             G.v().out.println("[" + getMethod().getName() + "] Constructing BafBody...");
 
-        JimpleBody jimpleBody;
-
-        if(body instanceof JimpleBody)
-            jimpleBody = (JimpleBody) body;
-        else
+        if (!(body instanceof JimpleBody))
             throw new RuntimeException("Can only construct BafBody's directly"
               + " from JimpleBody's.");
 
+        JimpleBody jimpleBody = (JimpleBody) body;
         jimpleBody.validate();
                
         JimpleToBafContext context = new JimpleToBafContext(jimpleBody.getLocalCount());
            
         // Convert all locals
         {
-            Iterator localIt = jimpleBody.getLocals().iterator();
-            
-            while(localIt.hasNext())
-            {
-                Local l = (Local) localIt.next();
+            for (Local l : jimpleBody.getLocals()) {
                 Type t = l.getType();
-                Local newLocal;
-                
-                newLocal = Baf.v().newLocal(l.getName(), UnknownType.v());
+                Local newLocal = Baf.v().newLocal(l.getName(), UnknownType.v());
                 
                 if(t.equals(DoubleType.v()) || t.equals(LongType.v()))
                     newLocal.setType(DoubleWordType.v());
@@ -93,11 +84,8 @@ public class BafBody extends Body
             
         // Convert all jimple instructions
         {
-            Iterator stmtIt = jimpleBody.getUnits().iterator();
-            
-            while(stmtIt.hasNext())
-            {
-                Stmt s = (Stmt) stmtIt.next();
+            for (Unit u : jimpleBody.getUnits()) {
+            	Stmt s = (Stmt) u;
                 List<Unit> conversionList = new ArrayList<Unit>();
 
                 context.setCurrentUnit(s);
@@ -109,13 +97,9 @@ public class BafBody extends Body
         }
         
         // Change all place holders
-        {
-            Iterator boxIt = getAllUnitBoxes().iterator();
-            
-            while(boxIt.hasNext())
-            {
-                UnitBox box = (UnitBox) boxIt.next();
-                
+        {            
+            for (UnitBox box : getAllUnitBoxes())
+            {                
                 if(box.getUnit() instanceof PlaceholderInst)
                 {
                     Unit source = ((PlaceholderInst) box.getUnit()).getSource();
@@ -126,11 +110,8 @@ public class BafBody extends Body
 
         // Convert all traps
         {
-            Iterator trapIt = jimpleBody.getTraps().iterator();
-            while (trapIt.hasNext())
+            for (Trap trap : jimpleBody.getTraps())
             {
-                Trap trap = (Trap) trapIt.next();
-
                 getTraps().add(Baf.v().newTrap(trap.getException(),
                      stmtToFirstInstruction.get(trap.getBeginUnit()),
                      stmtToFirstInstruction.get(trap.getEndUnit()),

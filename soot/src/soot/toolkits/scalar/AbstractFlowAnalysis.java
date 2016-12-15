@@ -26,10 +26,10 @@
 
 package soot.toolkits.scalar;
 
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-import soot.jimple.Stmt;
 import soot.options.Options;
 import soot.toolkits.graph.DirectedGraph;
 import soot.toolkits.graph.interaction.InteractionHandler;
@@ -46,7 +46,7 @@ public abstract class AbstractFlowAnalysis<N,A>
     protected Map<N, A> unitToBeforeFlow;
 
     /** Filtered: Maps graph nodes to IN sets. */
-    protected Map<Stmt,A> filterUnitToBeforeFlow;
+    protected Map<N,A> filterUnitToBeforeFlow = Collections.emptyMap();
 
     /** The graph being analysed. */
     protected DirectedGraph<N> graph;
@@ -69,8 +69,12 @@ public abstract class AbstractFlowAnalysis<N,A>
 
     /**
      * Returns the initial flow value for entry/exit graph nodes.
-     */
-    protected abstract A entryInitialFlow();
+	 * 
+	 * This is equal to {@link #newInitialFlow()}
+	 */
+    protected A entryInitialFlow() {
+    	return newInitialFlow();
+    }
 
     /**
      * Determines whether <code>entryInitialFlow()</code>

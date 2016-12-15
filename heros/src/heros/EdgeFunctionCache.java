@@ -10,9 +10,15 @@
  ******************************************************************************/
 package heros;
 
+import heros.solver.PathEdge;
+
+import java.util.Collection;
+import java.util.Map.Entry;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +42,7 @@ public class EdgeFunctionCache<N, D, M, V> implements EdgeFunctions<N, D, M, V> 
 		
 		normalCache = builder.build(new CacheLoader<NDNDKey, EdgeFunction<V>>() {
 			public EdgeFunction<V> load(NDNDKey key) throws Exception {
-				return delegate.getNormalEdgeFunction(key.getN1(), key.getD1(), key.getN2(), key.getD2());
+				return delegate.getNormalEdgeFunction(key.getN1(), key.getD1(), key.getN2(), key.getD2(), null);
 			}
 		});
 		
@@ -59,7 +65,7 @@ public class EdgeFunctionCache<N, D, M, V> implements EdgeFunctions<N, D, M, V> 
 		});
 	}
 
-	public EdgeFunction<V> getNormalEdgeFunction(N curr, D currNode, N succ, D succNode) {
+	public EdgeFunction<V> getNormalEdgeFunction(N curr, D currNode, N succ, D succNode, Collection<Entry<PathEdge<N, D>, EdgeFunction<V>>> matchingAbstractions) {
 		return normalCache.getUnchecked(new NDNDKey(curr, currNode, succ, succNode));
 	}
 

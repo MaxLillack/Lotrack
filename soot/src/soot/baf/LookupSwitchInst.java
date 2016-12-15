@@ -26,7 +26,9 @@
 package soot.baf;
 
 import java.util.*;
+
 import soot.*;
+import soot.jimple.IntConstant;
 
 public interface LookupSwitchInst extends Inst
 {
@@ -36,13 +38,13 @@ public interface LookupSwitchInst extends Inst
 
     public void setLookupValue(int index, int value);
     public int getLookupValue(int index);
-    public List getLookupValues();
-    public void setLookupValues(List values);
+    public List<IntConstant> getLookupValues();
+    public void setLookupValues(List<IntConstant> values);
     
     public int getTargetCount();
     public Unit getTarget(int index);
     public UnitBox getTargetBox(int index);
     public void setTarget(int index, Unit target);
-    public List getTargets();
+    public List<Unit> getTargets();
     public void setTargets(List<Unit> targets);
 }

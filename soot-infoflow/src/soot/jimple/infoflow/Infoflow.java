@@ -65,8 +65,8 @@ public class Infoflow extends AbstractInfoflow {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private static boolean debug = false;
-	private static int accessPathLength = 5;
-	private static boolean useRecursiveAccessPaths = true;
+	private static int accessPathLength = 6;
+	private static boolean useRecursiveAccessPaths = false;
 	
 	private InfoflowResults results;
 
@@ -181,6 +181,9 @@ public class Infoflow extends AbstractInfoflow {
 				else
 					Options.v().setPhaseOption("cg.spark", "vta:true");
 				Options.v().setPhaseOption("cg.spark", "string-constants:true");
+				break;
+			case CHA:
+				Options.v().setPhaseOption("cg.cha", "on");
 				break;
 			case RTA:
 				Options.v().setPhaseOption("cg.spark", "on");
@@ -473,6 +476,7 @@ public class Infoflow extends AbstractInfoflow {
 		List<SootMethod> seeds = new LinkedList<SootMethod>();
 		// If we have a callgraph, we retrieve the reachable methods. Otherwise,
 		// we have no choice but take all application methods as an approximation
+		
 		if (Scene.v().hasCallGraph()) {
 			List<MethodOrMethodContext> eps = new ArrayList<MethodOrMethodContext>(Scene.v().getEntryPoints());
 			ReachableMethods reachableMethods = new ReachableMethods(Scene.v().getCallGraph(), eps.iterator(), null);

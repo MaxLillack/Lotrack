@@ -31,6 +31,8 @@
 package soot.toolkits.scalar;
 
 import soot.*;
+import soot.toolkits.graph.UnitGraph;
+
 import java.util.*;
 
 
@@ -40,14 +42,20 @@ import java.util.*;
  */
 public interface LiveLocals
 {
-    
+	static final public class Factory {
+		private Factory() {}
+		public static LiveLocals newLiveLocals(UnitGraph graph) {
+			return new SimpleLiveLocals(graph);
+		}
+	}
+	
     /**
      *   Returns the list of Locals that are live before the specified
      *   Unit. 
      *   @param s the Unit that defines this query.
      *   @return a list of Locals that are live before the specified unit in the method.
      */
-    public List getLiveLocalsBefore(Unit s);
+    public List<Local> getLiveLocalsBefore(Unit s);
 
 
     /**
@@ -56,7 +64,7 @@ public interface LiveLocals
      *   @param s the Unit that defines this query.
      *   @return a list of Locals that are live after the specified unit in the method.
      */
-    public List getLiveLocalsAfter(Unit s);
+    public List<Local> getLiveLocalsAfter(Unit s);
 }
 
 

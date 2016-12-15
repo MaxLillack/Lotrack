@@ -23,10 +23,6 @@
  * contributors.  (Soot is distributed at http://www.sable.mcgill.ca/soot)
  */
 
-
-
-
-
 package soot;
 
 import java.io.ByteArrayOutputStream;
@@ -40,30 +36,26 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import soot.jimple.CaughtExceptionRef;
-import soot.jimple.DefinitionStmt;
 import soot.jimple.IdentityStmt;
-import soot.jimple.InstanceInvokeExpr;
-import soot.jimple.InvokeExpr;
-import soot.jimple.InvokeStmt;
 import soot.jimple.ParameterRef;
 import soot.jimple.ThisRef;
 import soot.options.Options;
 import soot.tagkit.AbstractHost;
 import soot.tagkit.CodeAttribute;
 import soot.tagkit.Tag;
-import soot.toolkits.exceptions.PedanticThrowAnalysis;
-import soot.toolkits.exceptions.ThrowAnalysis;
-import soot.toolkits.graph.ExceptionalUnitGraph;
-import soot.toolkits.graph.UnitGraph;
-import soot.toolkits.scalar.FlowSet;
-import soot.toolkits.scalar.InitAnalysis;
-import soot.toolkits.scalar.LocalDefs;
-import soot.toolkits.scalar.SimpleLiveLocals;
-import soot.toolkits.scalar.SmartLocalDefs;
 import soot.util.Chain;
 import soot.util.EscapedWriter;
 import soot.util.HashChain;
+import soot.validation.BodyValidator;
+import soot.validation.CheckInitValidator;
+import soot.validation.CheckTypesValidator;
+import soot.validation.CheckVoidLocalesValidator;
+import soot.validation.LocalsValidator;
+import soot.validation.TrapsValidator;
+import soot.validation.UnitBoxesValidator;
+import soot.validation.UsesValidator;
+import soot.validation.ValidationException;
+import soot.validation.ValueBoxesValidator;
 
 
 /**
@@ -77,6 +69,7 @@ import soot.util.HashChain;
  *  @see soot.jimple.JimpleBody
  *  @see soot.baf.BafBody
  */
+@SuppressWarnings("serial")
 public abstract class Body extends AbstractHost implements Serializable
 {
     /** The method associated with this Body. */
@@ -90,10 +83,33 @@ public abstract class Body extends AbstractHost implements Serializable
 
     /** The chain of units for this Body. */
     protected PatchingChain<Unit> unitChain = new PatchingChain<Unit>(new HashChain<Unit>());
+    
+	private static BodyValidator[] validators;
 
     /** Creates a deep copy of this Body. */
     abstract public Object clone();
 
+	/**
+	 * Returns an array containing some validators in order to validate the JimpleBody
+	 * @return the array containing validators
+	 */
+	private synchronized static BodyValidator[] getValidators() {
+		if (validators == null)
+		{
+			validators = new BodyValidator[] {
+				LocalsValidator.v(),
+				TrapsValidator.v(),
+				UnitBoxesValidator.v(),
+				UsesValidator.v(),
+				ValueBoxesValidator.v(),
+				//CheckInitValidator.v(),
+				CheckTypesValidator.v(),
+				CheckVoidLocalesValidator.v()
+			};
+		}
+		return validators;
+	};
+	
     /** Creates a Body associated to the given method.  Used by subclasses during initialization.
      *  Creation of a Body is triggered by e.g. Jimple.v().newBody(options).
      */
@@ -141,11 +157,8 @@ public abstract class Body extends AbstractHost implements Serializable
         HashMap<Object, Object> bindings = new HashMap<Object, Object>();
 
         {
-	        Iterator<Unit> it = b.getUnits().iterator();
-	
 	        // Clone units in body's statement list
-	        while(it.hasNext()) {
-	            Unit original = it.next();
+	        for (Unit original : b.getUnits()) {
 	            Unit copy = (Unit) original.clone();
 	
 	            copy.addAllTagsOf(original);
@@ -162,9 +175,7 @@ public abstract class Body extends AbstractHost implements Serializable
 
         {
 	        // Clone trap units.
-	        Iterator<Trap> it = b.getTraps().iterator();
-	        while(it.hasNext()) {
-	            Trap original = it.next();
+	        for (Trap original : b.getTraps()) {
 	            Trap copy = (Trap) original.clone();
 	
 	            // Add cloned unit to our trap list.
@@ -177,9 +188,7 @@ public abstract class Body extends AbstractHost implements Serializable
 
         {
 	        // Clone local units.
-	        Iterator<Local> it = b.getLocals().iterator();
-	        while(it.hasNext()) {
-	            Local original = it.next();
+	        for (Local original : b.getLocals()) {
 	            Local copy = (Local) original.clone();
 	
 	            // Add cloned unit to our trap list.
@@ -192,9 +201,7 @@ public abstract class Body extends AbstractHost implements Serializable
 
         {
 	        // Patch up references within units using our (old <-> new) map.
-	        Iterator<UnitBox> it = getAllUnitBoxes().iterator();
-	        while(it.hasNext()) {
-	            UnitBox box = it.next();
+	        for (UnitBox box : getAllUnitBoxes()) {
 	            Unit newObject, oldObject = box.getUnit();
 	
 	            // if we have a reference to an old object, replace it
@@ -208,15 +215,11 @@ public abstract class Body extends AbstractHost implements Serializable
 
         {
 	        // backpatching all local variables.
-	        Iterator<ValueBox> it = getUseBoxes().iterator();
-	        while(it.hasNext()) {
-	            ValueBox vb = it.next();
+	        for (ValueBox vb : getUseBoxes()) {
 	            if(vb.getValue() instanceof Local)
 	                vb.setValue((Value) bindings.get(vb.getValue()));
 	        }
-	        it = getDefBoxes().iterator();
-	        while(it.hasNext()) {
-	            ValueBox vb = it.next();
+	        for (ValueBox vb : getDefBoxes()) {
 	            if(vb.getValue() instanceof Local)
 	                vb.setValue((Value) bindings.get(vb.getValue()));
 	        }
@@ -224,150 +227,65 @@ public abstract class Body extends AbstractHost implements Serializable
         return bindings;
     }
 
+    protected void runValidation(BodyValidator validator) {
+        final List<ValidationException> exceptionList = new ArrayList<ValidationException>();
+    	validator.validate(this, exceptionList);
+    	if (!exceptionList.isEmpty())
+    		throw exceptionList.get(0);
+    }
+    
+
     /** Verifies a few sanity conditions on the contents on this body. */
     public void validate()
     {
-        //System.out.println("body: "+this.getUnits());
-        validateLocals();
-        validateTraps();
-        validateUnitBoxes();
-        if (Options.v().debug() || Options.v().validate()) {
-            validateUses();
-            validateValueBoxes();
-            checkInit();
-            checkTypes();
-            checkLocals();
-        }
+    	List<ValidationException> exceptionList = new ArrayList<ValidationException>();
+    	validate(exceptionList);
+    	if (!exceptionList.isEmpty())
+    		throw exceptionList.get(0);
+    }
+    
+    /**
+     * Validates the jimple body and saves a list of all validation errors 
+     * @param exceptionList the list of validation errors
+     */
+    public void validate(List<ValidationException> exceptionList) {
+        final boolean runAllValidators = Options.v().debug() || Options.v().validate();
+    	for (BodyValidator validator : getValidators()) {
+    		if (!validator.isBasicValidator() && !runAllValidators)
+    			continue;
+    		validator.validate(this, exceptionList);
+    	}
     }
 
 	/** Verifies that a ValueBox is not used in more than one place. */
     public void validateValueBoxes()
     {
-        List<ValueBox> l = getUseAndDefBoxes();
-        for( int i = 0; i < l.size(); i++ ) {
-            for( int j = 0; j < l.size(); j++ ) {
-                if( i == j ) continue;
-                if( l.get(i) == l.get(j) ) {
-                    System.err.println("Aliased value box : "+l.get(i)+" in "+getMethod());
-                    for( Iterator<Unit> uIt = getUnits().iterator(); uIt.hasNext(); ) {
-                        final Unit u = uIt.next();
-                        System.err.println(""+u);
-                    }
-                    throw new RuntimeException("Aliased value box : "+l.get(i)+" in "+getMethod());
-                }
-            }
-        }
+    	runValidation(ValueBoxesValidator.v());
     }
 
     /** Verifies that each Local of getUseAndDefBoxes() is in this body's locals Chain. */
     public void validateLocals()
     {
-        Iterator<ValueBox> it = getUseBoxes().iterator();
-        while(it.hasNext()){
-            validateLocal( it.next() );
-        }
-        it = getDefBoxes().iterator();
-        while(it.hasNext()){
-            validateLocal( it.next() );
-        }
+    	runValidation(LocalsValidator.v());
     }
-    private void validateLocal( ValueBox vb ) {
-        Value value;
-        if( (value = vb.getValue()) instanceof Local) {
-            //System.out.println("localChain: "+localChain);
-            if(!localChain.contains(value))
-                throw new RuntimeException("Local not in chain : "+value+" in "+getMethod());
-        }
-    }
+    
 
     /** Verifies that the begin, end and handler units of each trap are in this body. */
     public void validateTraps()
     {
-        Iterator<Trap> it = getTraps().iterator();
-        while (it.hasNext())
-        {
-            Trap t = it.next();
-            if (!unitChain.contains(t.getBeginUnit()))
-                throw new RuntimeException("begin not in chain"+" in "+getMethod());
-
-            if (!unitChain.contains(t.getEndUnit()))
-                throw new RuntimeException("end not in chain"+" in "+getMethod());
-
-            if (!unitChain.contains(t.getHandlerUnit()))
-                throw new RuntimeException("handler not in chain"+" in "+getMethod());
-        }
+    	runValidation(TrapsValidator.v());
     }
 
     /** Verifies that the UnitBoxes of this Body all point to a Unit contained within this body. */
     public void validateUnitBoxes()
     {
-        Iterator<UnitBox> it = getAllUnitBoxes().iterator();
-        while (it.hasNext())
-        {
-            UnitBox ub = it.next();
-            if (!unitChain.contains(ub.getUnit()))
-                throw new RuntimeException
-                    ("Unitbox points outside unitChain! to unit : "+ub.getUnit()+" in "+getMethod());
-        }
+    	runValidation(UnitBoxesValidator.v());
     }
 
     /** Verifies that each use in this Body has a def. */
     public void validateUses()
     {      
-        // Conservative validation of uses: add edges to exception handlers 
-        // even if they are not reachable.
-        //
-        // class C {
-        //   int a;
-        //   public void m() {
-        //     try {
-        //      a = 2;
-        //     } catch (Exception e) {
-        //      System.out.println("a: "+ a);
-        //     }
-        //   }
-        // }
-        //
-        // In a graph generated from the Jimple representation there would 
-        // be no edge from "a = 2;" to "catch..." because "a = 2" can only 
-        // generate an Error, a subclass of Throwable and not of Exception. 
-        // Use of 'a' in "System.out.println" would thus trigger a 'no defs 
-        // for value' RuntimeException. 
-        // To avoid this  we create an ExceptionalUnitGraph that considers all 
-        // exception handlers (even unreachable ones as the one in the code 
-        // snippet above) by using a PedanticThrowAnalysis and setting the 
-        // parameter 'omitExceptingUnitEdges' to false.
-        // 
-        // Note that unreachable traps can be removed by setting jb.uce's 
-        // "remove-unreachable-traps" option to true.
-        ThrowAnalysis throwAnalysis = PedanticThrowAnalysis.v();
-        UnitGraph g = new ExceptionalUnitGraph(this, throwAnalysis, false);
-        
-        LocalDefs ld = new SmartLocalDefs(g, new SimpleLiveLocals(g));
-
-        Iterator<Unit> unitsIt = getUnits().iterator();
-        while (unitsIt.hasNext())
-        {
-            Unit u = unitsIt.next();
-            Iterator<ValueBox> useBoxIt = u.getUseBoxes().iterator();
-            while (useBoxIt.hasNext())
-            {
-                Value v = (useBoxIt.next()).getValue();
-                if (v instanceof Local)
-                {
-                    // This throws an exception if there is
-                    // no def already; we check anyhow.
-                    List<Unit> l = ld.getDefsOfAt((Local)v, u);
-                    if (l.size() == 0){
-                        for( Iterator<Unit> uuIt = getUnits().iterator(); uuIt.hasNext(); ) {
-                            final Unit uu = uuIt.next();
-                            System.err.println(""+uu);
-                        }
-                        throw new RuntimeException("("+ getMethod() +") no defs for value: " + v + "!\n" + this);
-                    }
-                }
-            }
-        }
+    	runValidation(UsesValidator.v());
     }
 
     /** Returns a backed chain of the locals declared in this Body. */
@@ -379,11 +297,8 @@ public abstract class Body extends AbstractHost implements Serializable
     /** Return LHS of the first identity stmt assigning from \@this. **/
     public Local getThisLocal()
     {
-        Iterator<Unit> unitsIt = getUnits().iterator();
-
-        while (unitsIt.hasNext())
+        for (Unit s : getUnits())
         {
-            Unit s = unitsIt.next();
             if (s instanceof IdentityStmt &&
                 ((IdentityStmt)s).getRightOp() instanceof ThisRef)
                 return (Local)(((IdentityStmt)s).getLeftOp());
@@ -395,10 +310,8 @@ public abstract class Body extends AbstractHost implements Serializable
     /** Return LHS of the first identity stmt assigning from \@parameter i. **/
     public Local getParameterLocal(int i)
     {
-        Iterator<Unit> unitsIt = getUnits().iterator();
-        while (unitsIt.hasNext())
+        for (Unit s : getUnits())
         {
-            Unit s = unitsIt.next();
             if (s instanceof IdentityStmt &&
                 ((IdentityStmt)s).getRightOp() instanceof ParameterRef)
             {
@@ -446,10 +359,7 @@ public abstract class Body extends AbstractHost implements Serializable
     public List<Value> getParameterRefs()
     {
     	Value[] res = new Value[getMethod().getParameterCount()];
-        Iterator<Unit> unitsIt = getUnits().iterator();
-        while (unitsIt.hasNext())
-        {
-            Unit s = unitsIt.next();
+        for (Unit s : getUnits()) {
             if (s instanceof IdentityStmt) {
 				Value rightOp = ((IdentityStmt)s).getRightOp();
 				if (rightOp instanceof ParameterRef) {
@@ -659,137 +569,9 @@ public abstract class Body extends AbstractHost implements Serializable
         }
         return useAndDefBoxList;
     }
-
-    private void checkLocals() {
-	Chain<Local> locals=getLocals();
-
-	Iterator<Local> it=locals.iterator();
-	while(it.hasNext()) {
-	    Local l=it.next();
-	    if(l.getType() instanceof VoidType) 
-		throw new RuntimeException("Local "+l+" in "+method+" defined with void type");
-	}
-    }
-
-    private void checkTypes() {
-	Chain<Unit> units=getUnits();
-
-	Iterator<Unit> it=units.iterator();
-	while(it.hasNext()) {
-	    Unit stmt=(it.next());
-	    InvokeExpr iexpr=null;
-
-	    String errorSuffix=" at "+stmt+" in "+getMethod();
-
-	    if(stmt instanceof DefinitionStmt) {
-		DefinitionStmt astmt=(DefinitionStmt) stmt;
-                if( !(astmt.getRightOp() instanceof CaughtExceptionRef ) ) {
-                    Type leftType=Type.toMachineType(astmt.getLeftOp().getType());
-                    Type rightType=Type.toMachineType(astmt.getRightOp().getType());
-
-                    checkCopy(leftType,rightType,errorSuffix);
-                    if(astmt.getRightOp() instanceof InvokeExpr) 
-                        iexpr=(InvokeExpr) (astmt.getRightOp());
-                }
-	    }
-
-	    if(stmt instanceof InvokeStmt) iexpr=((InvokeStmt) stmt).getInvokeExpr();
-
-	    if(iexpr!=null) {
-		SootMethodRef called=iexpr.getMethodRef();
-
-		if(iexpr instanceof InstanceInvokeExpr) {
-		    InstanceInvokeExpr iiexpr=(InstanceInvokeExpr) iexpr;
-		    checkCopy(called.declaringClass().getType(),
-			      iiexpr.getBase().getType(),
-			      " in receiver of call"+errorSuffix);
-		}
-
-		if(called.parameterTypes().size() != iexpr.getArgCount())
-		    throw new RuntimeException("Warning: Argument count doesn't match up with signature in call"+errorSuffix+" in "+getMethod());
-		else 
-		    for(int i=0;i<iexpr.getArgCount();i++)
-			checkCopy(Type.toMachineType(called.parameterType(i)),
-				  Type.toMachineType(iexpr.getArg(i).getType()),
-				  " in argument "+i+" of call"+errorSuffix);
-	    }
-	}
-    }
-
-    private void checkCopy(Type leftType,Type rightType,String errorSuffix) {
-	if(leftType instanceof PrimType || rightType instanceof PrimType) {
-	    if(leftType instanceof IntType && rightType instanceof IntType) return;
-	    if(leftType instanceof LongType && rightType instanceof LongType) return;
-	    if(leftType instanceof FloatType && rightType instanceof FloatType) return;
-	    if(leftType instanceof DoubleType && rightType instanceof DoubleType) return;
-	    throw new RuntimeException("Warning: Bad use of primitive type"+errorSuffix+" in "+getMethod());
-	}
-
-	if(rightType instanceof NullType) return;
-	if(leftType instanceof RefType &&
-	   ((RefType) leftType).getClassName().equals("java.lang.Object")) return;
-	
-	if(leftType instanceof ArrayType || rightType instanceof ArrayType) {
-	    if(leftType instanceof ArrayType && rightType instanceof ArrayType) return;
-	    //it is legal to assign arrays to variables of type Serializable, Cloneable or Object
-	    if(rightType instanceof ArrayType) {
-	    	if(leftType.equals(RefType.v("java.io.Serializable")) ||
-	    			leftType.equals(RefType.v("java.lang.Cloneable")) ||
-	    			leftType.equals(RefType.v("java.lang.Object")))
-	    		return;
-	    }
-
-	    throw new RuntimeException("Warning: Bad use of array type"+errorSuffix+" in "+getMethod());
-	}
-
-	if(leftType instanceof RefType && rightType instanceof RefType) {
-	    SootClass leftClass=((RefType) leftType).getSootClass();
-	    SootClass rightClass=((RefType) rightType).getSootClass();
-	    if(leftClass.isPhantom() || rightClass.isPhantom()) {
-	    	return;
-	    }
-	    
-	    if(leftClass.isInterface()) {
-		if(rightClass.isInterface()) {
-		    if(!(leftClass.getName().equals(rightClass.getName()) || 
-			 Scene.v().getActiveHierarchy().isInterfaceSubinterfaceOf(rightClass,leftClass)))
-			throw new RuntimeException("Warning: Bad use of interface type"+errorSuffix+" in "+getMethod());
-		} else {
-		    // No quick way to check this for now.
-		}
-	    } else {
-		if(rightClass.isInterface()) {
-		    throw new RuntimeException("Warning: trying to use interface type where non-Object class expected"
-				       +errorSuffix+" in "+getMethod());
-		} else {
-		    if(!Scene.v().getActiveHierarchy().isClassSubclassOfIncluding(rightClass,leftClass))
-			throw new RuntimeException("Warning: Bad use of class type"+errorSuffix+" in "+getMethod());
-		}
-	    }
-	    return;
-	}
-	throw new RuntimeException("Warning: Bad types"+errorSuffix+" in "+getMethod());
-    }
-
-    @SuppressWarnings("unchecked")
+    
 	public void checkInit() {
-        ExceptionalUnitGraph g = new ExceptionalUnitGraph
-	    (this, PedanticThrowAnalysis.v(), false);
-
-		InitAnalysis analysis=new InitAnalysis(g);
-		for (Unit s : getUnits()) {
-			FlowSet init=(FlowSet) analysis.getFlowBefore(s);
-		    for (ValueBox vBox : s.getUseBoxes()) {
-				Value v=vBox.getValue();
-				if(v instanceof Local) {
-				    Local l=(Local) v;
-				    if(!init.contains(l))
-						throw new RuntimeException("Warning: Local variable "+l
-								   +" not definitely defined at "+s
-								   +" in "+method);
-				}
-		    }
-		}
+    	runValidation(CheckInitValidator.v());    
     }
     
     /**
@@ -808,6 +590,11 @@ public abstract class Body extends AbstractHost implements Serializable
         writerOut.close();
         return streamOut.toString();
     }
+    
+    public long getModificationCount() {
+    	return localChain.getModificationCount() + unitChain.getModificationCount() + trapChain.getModificationCount();
+    }
+
 }
 
 

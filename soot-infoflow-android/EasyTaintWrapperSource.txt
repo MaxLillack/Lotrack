@@ -288,3 +288,5 @@
 <android.widget.EditText: android.text.Editable getText()>
 <android.text.Editable: java.lang.String toString()>
 
+~<android.support.v4.app.Fragment: java.lang.String toString()>
+~<android.support.v4.app.FragmentManagerImpl: void dump(java.lang.String,java.io.FileDescriptor,java.io.PrintWriter,java.lang.String[])>

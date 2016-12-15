@@ -89,6 +89,7 @@ public class AccessPath implements Cloneable {
 	public AccessPath(Value val, SootField[] appendingFields, Type valType,
 			Type[] appendingFieldTypes, boolean taintSubFields,
 			boolean cutFirstField, boolean reduceBases){
+				
 		// Make sure that the base object is valid
 		assert (val == null && appendingFields != null && appendingFields.length > 0)
 		 	|| canContainValue(val);
@@ -358,7 +359,7 @@ public class AccessPath implements Cloneable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((fields == null) ? 0 : deepArrayHashCode(fields));
-		result = prime * result + ((fieldTypes == null) ? 0 : deepArrayHashCode(fieldTypes));
+//		result = prime * result + ((fieldTypes == null) ? 0 : deepArrayHashCode(fieldTypes));
 		result = prime * result + ((value == null) ? 0 : value.hashCode());
 		result = prime * result + ((baseType == null) ? 0 : baseType.hashCode());
 		result = prime * result + (this.taintSubFields ? 1 : 0);
@@ -377,8 +378,9 @@ public class AccessPath implements Cloneable {
 		AccessPath other = (AccessPath) obj;
 		if (!deepArrayEquals(fields, other.fields))
 			return false;
-		if (!deepArrayEquals(fieldTypes, other.fieldTypes))
-			return false;
+//		loadtime test: ignore types
+//		if (!deepArrayEquals(fieldTypes, other.fieldTypes))
+//			return false;
 		
 		if (value == null) {
 			if (other.value != null)
@@ -518,17 +520,27 @@ public class AccessPath implements Cloneable {
 		if (this.isEmpty() || a2.isEmpty())
 			return false;
 		
+		// If one of the access paths refers to an instance object and the other
+		// one doesn't, there can't be an entailment
 		if ((this.value != null && a2.value == null)
 				|| (this.value == null && a2.value != null))
 			return false;
+		
+		// There cannot be an entailment for two instance references with
+		// different base objects
 		if (this.value != null && !this.value.equals(a2.value))
 			return false;
 		
-		if (this.fields.length > a2.fields.length)
-			return false;
-		for (int i = 0; i < this.fields.length; i++)
-			if (!this.fields[i].equals(a2.fields[i]))
+		if (this.fields != null && a2.fields != null) {
+			// If this access path is deeper than the other one, it cannot entail it
+			if (this.fields.length > a2.fields.length)
 				return false;
+			
+			// Check the fields in detail
+			for (int i = 0; i < this.fields.length; i++)
+				if (!this.fields[i].equals(a2.fields[i]))
+					return false;
+		}
 		return true;
 	}
 	

@@ -27,6 +27,8 @@ public interface InterproceduralCFG<N,M>  {
 	 * @param n The node for which to get the parent method
 	 */
 	public M getMethodOf(N n);
+	
+	public List<N> getPredsOf(N u);
 
 	/**
 	 * Returns the successor nodes.
@@ -36,12 +38,12 @@ public interface InterproceduralCFG<N,M>  {
 	/**
 	 * Returns all callee methods for a given call.
 	 */
-	public Set<M> getCalleesOfCallAt(N n);
+	public Collection<M> getCalleesOfCallAt(N n);
 
 	/**
 	 * Returns all caller statements/nodes of a given method.
 	 */
-	public Set<N> getCallersOf(M m);
+	public Collection<N> getCallersOf(M m);
 
 	/**
 	 * Returns all call sites within a given method.
@@ -83,10 +85,6 @@ public interface InterproceduralCFG<N,M>  {
 	 * Returns the set of all nodes that are neither call nor start nodes.
 	 */
 	public Set<N> allNonCallStartNodes();
-	
-	public Set<N> allNodes();
-	
-	public Iterable<N> allNonStartNodes();
 	
 	/**
 	 * Returns whether succ is the fall-through successor of stmt,

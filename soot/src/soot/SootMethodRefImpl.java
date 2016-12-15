@@ -124,13 +124,14 @@ class SootMethodRefImpl implements SootMethodRef {
         while(true) {
             if(trace != null) trace.append(
                     "Looking in "+cl+" which has methods "+cl.getMethods()+"\n" );
-            if( cl.declaresMethod( getSubSignature() ) )
-                return checkStatic(cl.getMethod( getSubSignature() ));
+            SootMethod sm = cl.getMethodUnsafe(getSubSignature());
+            if( sm != null )
+                return checkStatic(sm);
             if(Scene.v().allowsPhantomRefs() && (cl.isPhantom() || Options.v().ignore_resolution_errors()))
             {
                 SootMethod m = new SootMethod(name, parameterTypes, returnType, isStatic()?Modifier.STATIC:0);
                 m.setPhantom(true);
-                cl.addMethod(m);
+                m = cl.getOrAddMethod(m);
                 return checkStatic(m);
             }
             if( cl.hasSuperclass() ) cl = cl.getSuperclass();
@@ -144,8 +145,9 @@ class SootMethodRefImpl implements SootMethodRef {
                 SootClass iface = queue.removeFirst();
                 if(trace != null) trace.append(
                         "Looking in "+iface+" which has methods "+iface.getMethods()+"\n" );
-                if( iface.declaresMethod( getSubSignature() ) )
-                    return checkStatic(iface.getMethod( getSubSignature() ));
+                SootMethod sm = iface.getMethodUnsafe(getSubSignature());
+                if( sm != null )
+                    return checkStatic(sm);
                 queue.addAll( iface.getInterfaces() );
             }
             if( cl.hasSuperclass() ) cl = cl.getSuperclass();
@@ -156,7 +158,7 @@ class SootMethodRefImpl implements SootMethodRef {
         //we simply create the methods on the fly; the method body will throw an appropriate
         //error just in case the code *is* actually reached at runtime
         if(Options.v().allow_phantom_refs())
-        	return createUnresolvedErrorMethod(cl);
+        	return createUnresolvedErrorMethod(declaringClass);
         
         if( trace == null ) {
         	ClassResolutionFailedException e = new ClassResolutionFailedException();
@@ -207,16 +209,17 @@ class SootMethodRefImpl implements SootMethodRef {
 		body.getUnits().add(assignStmt);
 		
 		//exc.<init>(message)
-		SootMethodRef cref = runtimeExceptionType.getSootClass().getMethod("<init>", Collections.<Type>singletonList(RefType.v("java.lang.String"))).makeRef();
-		SpecialInvokeExpr constructorInvokeExpr = Jimple.v().newSpecialInvokeExpr(exceptionLocal, cref, StringConstant.v("Unresolved compilation error: Method "+getSignature()+" does not exist!"));
+		SootMethodRef cref = Scene.v().makeConstructorRef(runtimeExceptionType.getSootClass(),
+				Collections.<Type>singletonList(RefType.v("java.lang.String")));
+		SpecialInvokeExpr constructorInvokeExpr = Jimple.v().newSpecialInvokeExpr(exceptionLocal, cref,
+				StringConstant.v("Unresolved compilation error: Method "+getSignature()+" does not exist!"));
 		InvokeStmt initStmt = Jimple.v().newInvokeStmt(constructorInvokeExpr);
 		body.getUnits().insertAfter(initStmt, assignStmt);
 		
 		//throw exc
 		body.getUnits().insertAfter(Jimple.v().newThrowStmt(exceptionLocal), initStmt);
 
-		declaringClass.addMethod(m);
-		return m;
+		return declaringClass.getOrAddMethod(m);
 	}
     
     public String toString() {

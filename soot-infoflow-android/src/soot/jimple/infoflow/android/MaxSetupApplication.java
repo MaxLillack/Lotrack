@@ -16,10 +16,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 import com.google.common.collect.Table;
 
@@ -74,7 +76,7 @@ public class MaxSetupApplication {
 	private final String apkFileLocation;
 	private String taintWrapperFile;
 	
-	private ISourceSinkManager sourceSinkManager = null;
+	private LoadTimeSourceSinkManager sourceSinkManager = null;
 	private AndroidEntryPointCreator entryPointCreator = null;
 	
 	public MaxSetupApplication(String androidJar, String apkFileLocation) {
@@ -350,6 +352,17 @@ public class MaxSetupApplication {
 	 * @return The entry point used for running soot
 	 */
 	private SootMethod initializeSoot() {
+		
+		List<String> excludeList = new LinkedList<String>();
+		excludeList.add("java.*");
+		excludeList.add("sun.misc.*");
+		excludeList.add("android.*");
+		excludeList.add("org.apache.*");
+		excludeList.add("soot.*");
+		excludeList.add("javax.servlet.*");
+		excludeList.add("org.joda.*");
+		Options.v().set_exclude(excludeList);
+		
 		Options.v().set_no_bodies_for_excluded(true);
 		Options.v().set_allow_phantom_refs(true);
 		Options.v().set_output_format(Options.output_format_none);
@@ -357,8 +370,10 @@ public class MaxSetupApplication {
 		Options.v().set_soot_classpath(apkFileLocation + File.pathSeparator
 				+ Scene.v().getAndroidJarPath(androidJar, apkFileLocation));
 		Options.v().set_android_jars(androidJar);
-		Options.v().set_src_prec(Options.src_prec_apk);
+		Options.v().set_src_prec(Options.src_prec_apk_class_jimple);
 		Options.v().set_app(true);
+		Options.v().set_keep_line_number(true);
+		Options.v().set_keep_offset(true);
 		Main.v().autoSetOptions();
 
 		// Configure the callgraph algorithm
@@ -426,7 +441,7 @@ public class MaxSetupApplication {
 			info.setEnableImplicitFlows(enableImplicitFlows);
 			info.setInspectSinks(false);
 			
-			sourceSinkManager = new LoadTimeSourceSinkManager(new ArrayList<String>(), configName);
+			sourceSinkManager = new LoadTimeSourceSinkManager(configName);
 			
 			info.computeInfoflow(apkFileLocation, path, entryPointCreator, new ArrayList<String>(),
 					sourceSinkManager);
@@ -438,6 +453,17 @@ public class MaxSetupApplication {
 		}
 	}
 
+	public void collectJimpleFiles(String configName)
+	{
+		LoadTimeInfoflow info = new LoadTimeInfoflow(androidJar, false);
+		String path = apkFileLocation + File.pathSeparator + Scene.v().getAndroidJarPath(androidJar, apkFileLocation);
+		sourceSinkManager = new LoadTimeSourceSinkManager(configName);
+		
+		info.onlySaveJimple(apkFileLocation, path, entryPointCreator, new ArrayList<String>(), sourceSinkManager);
+		
+		
+	}
+	
 	private AndroidEntryPointCreator createEntryPointCreator() {
 		AndroidEntryPointCreator entryPointCreator = new AndroidEntryPointCreator
 			(new ArrayList<String>(this.entrypoints));

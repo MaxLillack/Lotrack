@@ -27,13 +27,13 @@
 
 package soot.jimple.toolkits.scalar;
 
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.Collections;
-import java.util.ArrayDeque;
-import java.util.Deque;
 
 import soot.Body;
 import soot.BodyTransformer;
@@ -45,15 +45,22 @@ import soot.Trap;
 import soot.Unit;
 import soot.options.Options;
 import soot.toolkits.exceptions.PedanticThrowAnalysis;
-import soot.toolkits.graph.ExceptionalUnitGraph;
+import soot.toolkits.exceptions.ThrowAnalysis;
 import soot.toolkits.graph.DirectedGraph;
+import soot.toolkits.graph.ExceptionalUnitGraph;
 import soot.util.Chain;
 
 
 public class UnreachableCodeEliminator extends BodyTransformer
 {
+	protected ThrowAnalysis throwAnalysis = null;
+
 	public UnreachableCodeEliminator( Singletons.Global g ) {}
 	public static UnreachableCodeEliminator v() { return G.v().soot_jimple_toolkits_scalar_UnreachableCodeEliminator(); }
+
+	public UnreachableCodeEliminator( ThrowAnalysis ta ) {
+		this.throwAnalysis = ta;
+	}
 
 	protected void internalTransform(Body body, String phaseName, Map<String,String> options) 
 	{		
@@ -66,10 +73,10 @@ public class UnreachableCodeEliminator extends BodyTransformer
 		// its handler, so that we retain Traps in the case where
 		// trapped units remain, but the default ThrowAnalysis
 		// says that none of them can throw the caught exception.
-		ExceptionalUnitGraph graph = PhaseOptions.getBoolean(options, "remove-unreachable-traps")
-			? new ExceptionalUnitGraph(body, Scene.v().getDefaultThrowAnalysis(), true)
-			: new ExceptionalUnitGraph(body, PedanticThrowAnalysis.v(), false)
-			;
+		if (this.throwAnalysis == null)
+			this.throwAnalysis = PhaseOptions.getBoolean(options, "remove-unreachable-traps", true)
+				? Scene.v().getDefaultThrowAnalysis() : PedanticThrowAnalysis.v();
+		ExceptionalUnitGraph graph =  new ExceptionalUnitGraph(body, throwAnalysis, false);
 
 		Chain<Unit> units = body.getUnits();
 		int numPruned = units.size();
@@ -97,14 +104,32 @@ public class UnreachableCodeEliminator extends BodyTransformer
 			if ( (trap.getBeginUnit() == trap.getEndUnit()) || !reachable.contains(trap.getHandlerUnit()) ) {
 				it.remove();
 			}
-		}   
+		}
+		
+		// We must make sure that the end units of all traps which are still
+		// alive are kept in the code
+		for (Trap t : body.getTraps())
+			if (t.getEndUnit() == body.getUnits().getLast())
+				reachable.add(t.getEndUnit());
+
+		Set<Unit> notReachable = new HashSet<Unit>();
+		if (Options.v().verbose()) {
+			for (Unit u : units) {
+				if (!reachable.contains(u))
+					notReachable.add(u);
+			}
+		}
 			
 		units.retainAll(reachable);   
 	  	
 		numPruned -= units.size();
 		
 		if (Options.v().verbose()) {
-			G.v().out.println("[" + body.getMethod().getName() + "]	 Removed " + numPruned + " statements...");
+			G.v().out.println("[" + body.getMethod().getName() + "]	 Removed " + numPruned + " statements: ");
+			for (Unit u : notReachable) {
+				G.v().out.println("[" + body.getMethod().getName() + "]	         " + u);
+			}
+
 		}
 	}
 	
@@ -114,14 +139,14 @@ public class UnreachableCodeEliminator extends BodyTransformer
 	private <T> Set<T> reachable(T first, DirectedGraph<T> g) {
 		if ( first == null || g == null ) {
 			return Collections.<T>emptySet();
-		}	
+		}
 		Set<T> visited = new HashSet<T>(g.size());
 		Deque<T> q = new ArrayDeque<T>();
 		q.addFirst(first);
 		do {
 			T t = q.removeFirst();
 			if ( visited.add(t) ) {				
-				q.addAll(g.getSuccsOf(t));		
+				q.addAll(g.getSuccsOf(t));
 			}
 		}
 		while (!q.isEmpty());

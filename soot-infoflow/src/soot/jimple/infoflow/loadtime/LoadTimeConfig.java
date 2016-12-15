@@ -1,7 +1,5 @@
 package soot.jimple.infoflow.loadtime;
 
-import com.typesafe.config.Config;
-
 public class LoadTimeConfig {
 	
 	private String name;

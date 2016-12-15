@@ -94,6 +94,7 @@ import soot.dava.toolkits.base.AST.traversals.CopyPropagation;
 import soot.dava.toolkits.base.finders.AbruptEdgeFinder;
 import soot.dava.toolkits.base.finders.CycleFinder;
 import soot.dava.toolkits.base.finders.ExceptionFinder;
+import soot.dava.toolkits.base.finders.ExceptionNode;
 import soot.dava.toolkits.base.finders.IfFinder;
 import soot.dava.toolkits.base.finders.LabeledBlockFinder;
 import soot.dava.toolkits.base.finders.SequenceFinder;
@@ -184,13 +185,15 @@ import soot.util.Switchable;
 public class DavaBody extends Body {
 
 	public boolean DEBUG = false;
-	private Map pMap;
+	private Map<Integer, Value> pMap;
 
 	private HashSet<Object> consumedConditions, thisLocals;
 
-	private IterableSet synchronizedBlockFacts, exceptionFacts, monitorFacts;
+	private IterableSet<ExceptionNode> synchronizedBlockFacts;
+	private IterableSet<ExceptionNode> exceptionFacts;
+	private IterableSet<AugmentedStmt> monitorFacts;
 	
-	private IterableSet importList;
+	private IterableSet<String> importList;
 	
 	private Local controlLocal;
 
@@ -198,7 +201,7 @@ public class DavaBody extends Body {
 
 	private Unit constructorUnit; //holds a stmt (this.init<>)
 
-	private List caughtrefs;
+	private List<CaughtExceptionRef> caughtrefs;
 
 	/**
 	 *  Construct an empty DavaBody 
@@ -207,15 +210,15 @@ public class DavaBody extends Body {
 	DavaBody(SootMethod m) {
 		super(m);
 
-		pMap = new HashMap();
+		pMap = new HashMap<Integer, Value>();
 		consumedConditions = new HashSet<Object>();
 		thisLocals = new HashSet<Object>();
-		synchronizedBlockFacts = new IterableSet();
-		exceptionFacts = new IterableSet();
-		monitorFacts = new IterableSet();
-		importList = new IterableSet();
+		synchronizedBlockFacts = new IterableSet<ExceptionNode>();
+		exceptionFacts = new IterableSet<ExceptionNode>();
+		monitorFacts = new IterableSet<AugmentedStmt>();
+		importList = new IterableSet<String>();
 		//packagesUsed = new IterableSet();
-		caughtrefs = new LinkedList();
+		caughtrefs = new LinkedList<CaughtExceptionRef>();
 
 		controlLocal = null;
 		constructorExpr = null;
@@ -225,7 +228,7 @@ public class DavaBody extends Body {
 		return constructorUnit;
 	}
 
-	public List get_CaughtRefs() {
+	public List<CaughtExceptionRef> get_CaughtRefs() {
 		return caughtrefs;
 	}
 
@@ -241,11 +244,11 @@ public class DavaBody extends Body {
 		constructorUnit = s;
 	}
 
-	public Map get_ParamMap() {
+	public Map<Integer, Value> get_ParamMap() {
 		return pMap;
 	}
 
-	public void set_ParamMap(Map map) {
+	public void set_ParamMap(Map<Integer, Value> map) {
 		pMap = map;
 	}
 
@@ -276,19 +279,19 @@ public class DavaBody extends Body {
 		return b;
 	}
 
-	public IterableSet get_SynchronizedBlockFacts() {
+	public IterableSet<ExceptionNode> get_SynchronizedBlockFacts() {
 		return synchronizedBlockFacts;
 	}
 
-	public IterableSet get_ExceptionFacts() {
+	public IterableSet<ExceptionNode> get_ExceptionFacts() {
 		return exceptionFacts;
 	}
 
-	public IterableSet get_MonitorFacts() {
+	public IterableSet<AugmentedStmt> get_MonitorFacts() {
 		return monitorFacts;
 	}
 	
-	public IterableSet getImportList(){
+	public IterableSet<String> getImportList(){
 		return importList;
 	}
 	
@@ -468,7 +471,6 @@ public class DavaBody extends Body {
 		debug("applyASTAnalyses","initial one time analyses completed");
 		
 		boolean flag = true;
-		int times = 0;
 
 		G.v().ASTTransformations_modified = false;
 		G.v().ASTIfElseFlipped = false;
@@ -480,8 +482,6 @@ public class DavaBody extends Body {
 			do {
 				debug("applyASTAnalyses","ITERATION");
 				G.v().ASTTransformations_modified = false;
-				times++;
-
 				
 				
 				AST.apply(new AndAggregator());
@@ -612,7 +612,7 @@ public class DavaBody extends Body {
 		//29th Jan 2006
 		//make sure when recompiling there is no variable might not be initialized error
 
-		Map options = PhaseOptions.v().getPhaseOptions("db.force-recompile");
+		Map<String, String> options = PhaseOptions.v().getPhaseOptions("db.force-recompile");
         boolean force = PhaseOptions.getBoolean(options, "enabled");
         //System.out.println("Force is"+force);
 
@@ -679,11 +679,8 @@ public class DavaBody extends Body {
 			HashMap<Switchable, Switchable> bindings = new HashMap<Switchable, Switchable>();
 			HashMap<Unit, Unit> reverse_binding = new HashMap<Unit, Unit>();
 
-			Iterator it = grimpBody.getUnits().iterator();
-
 			// Clone units in body's statement list 
-			while (it.hasNext()) {
-				Unit original = (Unit) it.next();
+			for (Unit original : grimpBody.getUnits()) {
 				Unit copy = (Unit) original.clone();
 
 				// Add cloned unit to our unitChain.
@@ -697,9 +694,7 @@ public class DavaBody extends Body {
 			}
 
 			// patch up the switch statments
-			it = getUnits().iterator();
-			while (it.hasNext()) {
-				Unit u = (Unit) it.next();
+			for (Unit u : getUnits()) {
 				Stmt s = (Stmt) u;
 
 				if (s instanceof TableSwitchStmt) {
@@ -739,23 +734,18 @@ public class DavaBody extends Body {
 			}
 
 			// Clone locals.
-			it = grimpBody.getLocals().iterator();
-			while (it.hasNext()) {
-				Local original = (Local) it.next();
-
+			for (Local original : grimpBody.getLocals()) {
 				Local copy = Dava.v().newLocal(original.getName(),
 						original.getType());
 
-				getLocals().addLast(copy);
+				getLocals().add(copy);
 
 				// Build old <-> new mapping.
 				bindings.put(original, copy);
 			}
 
 			// Patch up references within units using our (old <-> new) map.
-			it = getAllUnitBoxes().iterator();
-			while (it.hasNext()) {
-				UnitBox box = (UnitBox) it.next();
+			for (UnitBox box : getAllUnitBoxes()) {
 				Unit newObject, oldObject = box.getUnit();
 
 				// if we have a reference to an old object, replace it 
@@ -765,18 +755,13 @@ public class DavaBody extends Body {
 			}
 
 			// backpatch all local variables.
-			it = getUseAndDefBoxes().iterator();
-			while (it.hasNext()) {
-				ValueBox vb = (ValueBox) it.next();
+			for (ValueBox vb : getUseAndDefBoxes()) {
 				if (vb.getValue() instanceof Local)
 					vb.setValue((Value) bindings.get(vb.getValue()));
 			}
 
 			// clone the traps 
-			Iterator trit = grimpBody.getTraps().iterator();
-			while (trit.hasNext()) {
-
-				Trap originalTrap = (Trap) trit.next();
+			for (Trap originalTrap : grimpBody.getTraps()) {
 				Trap cloneTrap = (Trap) originalTrap.clone();
 
 				Unit handlerUnit = (Unit) bindings.get(originalTrap
@@ -797,11 +782,10 @@ public class DavaBody extends Body {
 		 *  This allows for easy handling of breaks, continues and exceptional loops.
 		 */
 		{
-			PatchingChain units = getUnits();
-
-			Iterator it = units.snapshotIterator();
+			PatchingChain<Unit> units = getUnits();
+			Iterator<Unit> it = units.snapshotIterator();
 			while (it.hasNext()) {
-				Unit u = (Unit) it.next();
+				Unit u = it.next();
 				Stmt s = (Stmt) u;
 
 				if (s instanceof IfStmt) {
@@ -846,10 +830,7 @@ public class DavaBody extends Body {
 				}
 			}
 
-			it = getTraps().iterator();
-			while (it.hasNext()) {
-				Trap t = (Trap) it.next();
-
+			for (Trap t : getTraps()) {
 				JGotoStmt jgs = new JGotoStmt((Unit) t.getHandlerUnit());
 				units.addLast(jgs);
 				t.setHandlerUnit((Unit) jgs);
@@ -861,9 +842,8 @@ public class DavaBody extends Body {
 		 */
 
 		{
-			Iterator it = getLocals().iterator();
-			while (it.hasNext()) {
-				Type t = ((Local) it.next()).getType();
+			for (Local l : getLocals()) {
+				Type t = l.getType();
 
 				if (t instanceof RefType) {
 					RefType rt = (RefType) t;
@@ -886,9 +866,7 @@ public class DavaBody extends Body {
 				}
 			}
 
-			it = getUnits().iterator();
-			while (it.hasNext()) {
-				Unit u = (Unit) it.next();
+			for (Unit u : getUnits()) {
 				Stmt s = (Stmt) u;
 
 				if (s instanceof IfStmt)
@@ -941,9 +919,8 @@ public class DavaBody extends Body {
 		 */
 
 		{
-			Iterator ucit = getUnits().iterator();
-			while (ucit.hasNext()) {
-				Stmt s = (Stmt) ucit.next();
+			for (Unit u : getUnits()) {
+				Stmt s = (Stmt) u;
 
 				if (s instanceof IdentityStmt) {
 					IdentityStmt ids = (IdentityStmt) s;
@@ -964,11 +941,11 @@ public class DavaBody extends Body {
 					Value rightOp = ds.getRightOp();
 
 					if (rightOp instanceof ParameterRef)
-						pMap.put(new Integer(((ParameterRef) rightOp)
-								.getIndex()), ds.getLeftOp());
+						pMap.put(((ParameterRef) rightOp)
+								.getIndex(), ds.getLeftOp());
 
 					if (rightOp instanceof CaughtExceptionRef)
-						caughtrefs.add(ds.getLeftOp());
+						caughtrefs.add((CaughtExceptionRef) rightOp);
 				}
 			}
 		}
@@ -978,9 +955,8 @@ public class DavaBody extends Body {
 		 */
 
 		{
-			Iterator ucit = getUnits().iterator();
-			while (ucit.hasNext()) {
-				Stmt s = (Stmt) ucit.next();
+			for (Unit u : getUnits()) {
+				Stmt s = (Stmt) u;
 
 				if (s instanceof InvokeStmt) {
 
@@ -1294,14 +1270,8 @@ public class DavaBody extends Body {
 
 	
 	public void addToImportList(String className){
-		if(className.equals(""))
-			return;
-		
-		if(!importList.contains(className)){
+		if(!className.isEmpty())
 			importList.add(className);
-			if(DEBUG) 
-				System.out.println("Adding to import list: "+className);
-		}
 	}
 	
 	public void debug(String methodName, String debug){		

@@ -20,13 +20,14 @@
 package soot.jimple.toolkits.annotation.parity;
 
 import soot.*;
-import soot.util.*;
 import java.util.*;
 
 import soot.jimple.*;
 import soot.toolkits.graph.*;
 import soot.toolkits.scalar.*;
 import soot.options.*;
+
+import static soot.jimple.toolkits.annotation.parity.ParityAnalysis.Parity.*;
 
 // STEP 1: What are we computing?
 // SETS OF PAIRS of form (X, T) => Use ArraySparseSet.
@@ -39,13 +40,23 @@ import soot.options.*;
 // FORWARDS
 //
 //
-public class ParityAnalysis extends ForwardFlowAnalysis {
-
+public class ParityAnalysis extends ForwardFlowAnalysis<Unit,Map<Value, ParityAnalysis.Parity>> {
+	public enum Parity {
+		TOP,
+		BOTTOM,
+		EVEN,
+		ODD;
+				
+		static Parity valueOf (int v) {
+			return (v % 2) == 0 ? EVEN : ODD;
+		}
+		
+		static Parity valueOf (long v) {
+			return (v % 2) == 0 ? EVEN : ODD;
+		}
+	}
+	
     private UnitGraph g;
-    private final static String TOP = "top";
-    private final static String BOTTOM = "bottom";
-    private final static String EVEN = "even";
-    private final static String ODD = "odd";
 
     private LiveLocals filter;
     
@@ -56,10 +67,10 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
 
         this.filter = filter;
         
-        filterUnitToBeforeFlow = new HashMap<Stmt, HashMap>();
+        filterUnitToBeforeFlow = new HashMap<Unit, Map<Value, Parity>>();
         buildBeforeFilterMap();
         
-        filterUnitToAfterFlow = new HashMap<Stmt, HashMap>();
+        filterUnitToAfterFlow = new HashMap<Unit, Map<Value, Parity>>();
         
         doAnalysis();
         
@@ -74,20 +85,18 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
     
     private void buildBeforeFilterMap(){
         
-        Iterator it = g.getBody().getUnits().iterator();
-        while (it.hasNext()){
-            Stmt s = (Stmt)it.next();
+        for (Unit s : g.getBody().getUnits()) {
             //if (!(s instanceof DefinitionStmt)) continue;
             //Value left = ((DefinitionStmt)s).getLeftOp();
             //if (!(left instanceof Local)) continue;
         
             //if (!((left.getType() instanceof IntegerType) || (left.getType() instanceof LongType))) continue;
-            List list = filter.getLiveLocalsBefore(s);
-            HashMap map = new HashMap(); 
-            Iterator listIt = list.iterator();
-            while (listIt.hasNext()){
-                map.put(listIt.next(), BOTTOM);
+
+            Map<Value, Parity> map = new HashMap<Value, Parity>();            
+            for (Local l : filter.getLiveLocalsBefore(s)) {
+            	map.put(l, BOTTOM);
             }
+                        
             filterUnitToBeforeFlow.put(s, map);
         } 
         //System.out.println("init filtBeforeMap: "+filterUnitToBeforeFlow);           
@@ -106,20 +115,14 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
 // top    | top    | top    | top   | top
 //
 
-    protected void merge(Object in1, Object in2, Object out)
+    @Override
+    protected void merge(Map<Value, Parity> inMap1, Map<Value, Parity> inMap2, Map<Value, Parity> outMap)
     {
-	HashMap inMap1 = (HashMap) in1;
-	HashMap inMap2 = (HashMap) in2;
-	HashMap<Object, String> outMap = (HashMap<Object, String>) out;
-
-	Set keys = inMap1.keySet();
-	Iterator it = keys.iterator();
-	while (it.hasNext()) {
-	 	Object var1 = it.next();
+	for (Value var1 : inMap1.keySet()) {
         //System.out.println(var1);
-		String inVal1 = (String)inMap1.get(var1);
+		Parity inVal1 = inMap1.get(var1);
         //System.out.println(inVal1);
-		String inVal2 = (String)inMap2.get(var1);
+		Parity inVal2 = inMap2.get(var1);
         //System.out.println(inVal2);
        // System.out.println("before out "+outMap.get(var1));
 
@@ -151,10 +154,8 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
 // in(s) = ( out(s) minus defs(s) ) union uses(s)
 //
 
-    protected void copy(Object source, Object dest) {
-
-        HashMap sourceIn = (HashMap)source;
-        HashMap destOut = (HashMap)dest;
+    @Override
+    protected void copy(Map<Value, Parity> sourceIn, Map<Value, Parity> destOut) {
         destOut.clear();
         destOut.putAll(sourceIn);
     }
@@ -170,74 +171,59 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
     // 			constants are tested mod 2
     //
 
-    private String getParity(HashMap<Value, String> in, Value val) {
+    private Parity getParity(Map<Value, Parity> in, Value val) {
         //System.out.println("get Parity in: "+in);
         if ((val instanceof AddExpr) | (val instanceof SubExpr)) {
-        	String resVal1 = getParity(in, ((BinopExpr)val).getOp1());
-	        String resVal2 = getParity(in, ((BinopExpr)val).getOp2());
+        	Parity resVal1 = getParity(in, ((BinopExpr)val).getOp1());
+        	Parity resVal2 = getParity(in, ((BinopExpr)val).getOp2());
+        	
 	        if (resVal1.equals(TOP) | resVal2.equals(TOP)) {
                 return TOP;
 	        }  
-            else if (resVal1.equals(BOTTOM) | resVal2.equals(BOTTOM)){
+            if (resVal1.equals(BOTTOM) | resVal2.equals(BOTTOM)){
                 return BOTTOM;
             }
-	        else if (resVal1.equals(resVal2)) {
+	        if (resVal1.equals(resVal2)) {
                 return EVEN;
 	        }
-	        else {
+	        
 	            return ODD;
-	        }
         }
-        else if (val instanceof MulExpr) {
-	        String resVal1 = getParity(in, ((BinopExpr)val).getOp1());
-	        String resVal2 = getParity(in, ((BinopExpr)val).getOp2());
+        
+        if (val instanceof MulExpr) {
+        	Parity resVal1 = getParity(in, ((BinopExpr)val).getOp1());
+        	Parity resVal2 = getParity(in, ((BinopExpr)val).getOp2());
 	        if (resVal1.equals(TOP) | resVal2.equals(TOP)) {
 	            return TOP;
 	        }
-            else if (resVal1.equals(BOTTOM) | resVal2.equals(BOTTOM)){
+            if (resVal1.equals(BOTTOM) | resVal2.equals(BOTTOM)){
                 return BOTTOM;
             }
-	        else if (resVal1.equals(ODD) && resVal2.equals(ODD)) {
-	            return ODD;
+	        if (resVal1.equals(resVal2)) {
+	            return resVal1;
 	        }
-	        else {
-	            return EVEN;
-	        }
+	        
+	        return EVEN;
         }
-        else if (val instanceof IntConstant) {
+        if (val instanceof IntConstant) {
 	        int value = ((IntConstant)val).value;
-	        if ((value % 2) == 0) {
-                return EVEN;
-	        }
-	        else {
-	            return ODD;
-	        }
+	        return valueOf(value);
         }
-        else if (val instanceof LongConstant) {
+        if (val instanceof LongConstant) {
 	        long value = ((LongConstant)val).value;
-	        if ((value % 2) == 0) {
-	            return EVEN;
-	        }
-	        else {
-	            return ODD;
-	        }
+	        return valueOf(value);
         }
-        else if (in.containsKey(val)) {
-      	    return in.get(val);
-        }
-        else {
-            return TOP;
-        }
-     
+        
+        Parity p = in.get(val);
+        if (p == null)
+        	return TOP; 
+        return p;
     }
     
-    
-    protected void flowThrough(Object inValue, Object unit,
-            Object outValue)
+    @Override
+    protected void flowThrough(Map<Value, Parity> in, Unit s,
+    		Map<Value, Parity> out)
     {
-        HashMap in  = (HashMap) inValue;
-        HashMap<Value, String> out = (HashMap<Value, String>) outValue;
-        Stmt    s   = (Stmt)    unit;
 
 	    // copy in to out 
 	    out.putAll(in);
@@ -277,13 +263,11 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
         //}
     }
     
-    private void buildAfterFilterMap(Stmt s){
+    private void buildAfterFilterMap(Unit s){
         
-        List list = filter.getLiveLocalsAfter(s);
-        HashMap map = new HashMap(); 
-        Iterator listIt = list.iterator();
-        while (listIt.hasNext()){
-            map.put(listIt.next(), BOTTOM);
+        Map<Value, Parity> map = new HashMap<Value, Parity>();
+        for (Local local :  filter.getLiveLocalsAfter(s)) {
+            map.put(local, BOTTOM);
         }
         filterUnitToAfterFlow.put(s, map);
         //System.out.println("built afterflow filter map: "+filterUnitToAfterFlow);
@@ -295,7 +279,8 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
 //
 // start node: locals with BOTTOM
 // initial approximation: locals with BOTTOM
-    protected Object entryInitialFlow()
+    @Override
+    protected Map<Value, Parity> entryInitialFlow()
     {
 	/*HashMap initMap = new HashMap();
 	
@@ -309,70 +294,52 @@ public class ParityAnalysis extends ForwardFlowAnalysis {
         return newInitialFlow();
     }
 
-    private void updateBeforeFilterMap(){
-    
-        Iterator<Stmt> filterIt = filterUnitToBeforeFlow.keySet().iterator();
-        while (filterIt.hasNext()){
-            Stmt s = filterIt.next();
-            HashMap allData = (HashMap)unitToBeforeFlow.get(s);
-            
-            HashMap filterData = (HashMap) filterUnitToBeforeFlow.get(s);
-
-            filterUnitToBeforeFlow.put(s, updateFilter(allData, filterData));
-            
+    private void updateBeforeFilterMap() {    
+        for (Unit s : filterUnitToBeforeFlow.keySet()) {
+            Map<Value, Parity> allData = getFlowBefore(s);            
+            Map<Value, Parity> filterData = filterUnitToBeforeFlow.get(s);
+            filterUnitToBeforeFlow.put(s, updateFilter(allData, filterData));            
         }
     }
         
-    private void updateAfterFilterMap(Stmt s){
-    
-        HashMap allData = (HashMap)unitToAfterFlow.get(s);
-            
-        HashMap filterData = (HashMap) filterUnitToAfterFlow.get(s);
-
-        filterUnitToAfterFlow.put(s, updateFilter(allData, filterData));
-            
+    private void updateAfterFilterMap(Unit s) {    
+    	Map<Value, Parity> allData = getFlowAfter(s);            
+    	Map<Value, Parity> filterData = filterUnitToAfterFlow.get(s);
+        filterUnitToAfterFlow.put(s, updateFilter(allData, filterData));            
     }
         
-    private HashMap updateFilter(HashMap allData, HashMap filterData){
+    private Map<Value, Parity> updateFilter(Map<Value, Parity> allData, Map<Value, Parity> filterData){
 
-        if (allData == null) return filterData;
-        Iterator<Value> filterVarsIt = filterData.keySet().iterator();
-        ArrayList<Value> toRemove = new ArrayList<Value>();
-        while (filterVarsIt.hasNext()){
-            Value v = filterVarsIt.next();
-            if (allData.get(v) == null){
-                toRemove.add(v);
-                //filterData.put(v, new HashMap());
+        if (allData == null) 
+        	return filterData;
+
+        for (Value v : filterData.keySet()) {
+        	Parity d = allData.get(v);
+            if (d == null) {
+            	filterData.remove(v);
+            } else {
+                filterData.put(v, d);
             }
-            else {
-                filterData.put(v, allData.get(v));
-            }
-        }
-        Iterator<Value> removeIt = toRemove.iterator();
-        while (removeIt.hasNext()){
-            filterData.remove(removeIt.next());
         }
 
         return filterData;
     }
-
-    protected Object newInitialFlow()
+    
+    @Override
+    protected Map<Value, Parity> newInitialFlow()
     {
-	    HashMap<Value, String> initMap = new HashMap<Value, String>();
+	    Map<Value, Parity> initMap = new HashMap<Value, Parity>();
 	
-	    Chain locals = g.getBody().getLocals();
-	    Iterator it = locals.iterator();
-	    while (it.hasNext()) {
-            Local next = (Local)it.next();
+	    for (Local l : g.getBody().getLocals()) {
+	    	Type t = l.getType();
             //System.out.println("next local: "+next);
-            if ((next.getType() instanceof IntegerType) || (next.getType() instanceof LongType)){
-	            initMap.put(next, BOTTOM);
+            if ((t instanceof IntegerType) || (t instanceof LongType)) {
+	            initMap.put(l, BOTTOM);
             }
 	    }
     
-        Iterator boxIt = g.getBody().getUseAndDefBoxes().iterator();
-        while (boxIt.hasNext()){
-            Value val = ((ValueBox)boxIt.next()).getValue();
+        for (ValueBox vb : g.getBody().getUseAndDefBoxes()) {
+            Value val = vb.getValue();
             if (val instanceof ArithmeticConstant) {
                 initMap.put(val, getParity(initMap, val));
             }

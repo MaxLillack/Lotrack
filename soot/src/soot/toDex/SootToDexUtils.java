@@ -1,11 +1,12 @@
 package soot.toDex;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jf.dexlib.Code.Opcode;
+import org.jf.dexlib2.Opcode;
 
 import soot.ArrayType;
 import soot.BooleanType;
@@ -26,8 +27,6 @@ import soot.Value;
 import soot.VoidType;
 import soot.jimple.InvokeExpr;
 import soot.jimple.Stmt;
-import soot.toDex.instructions.AddressInsn;
-import soot.toDex.instructions.Insn;
 
 /**
  * Utility class for the conversion from soot to dex.
@@ -50,24 +49,35 @@ public class SootToDexUtils {
 	}
 	
 	public static String getDexTypeDescriptor(Type sootType) {
+		final String typeDesc;
 		if (sootType instanceof RefType) {
-			return getDexClassName(((RefType) sootType).getClassName());
+			typeDesc = getDexClassName(((RefType) sootType).getClassName());
 		} else if (sootType instanceof ArrayType) {
-			return getDexArrayTypeDescriptor((ArrayType) sootType);
+			typeDesc = getDexArrayTypeDescriptor((ArrayType) sootType);
 		} else {
-			return sootToDexTypeDescriptor.get(sootType.getClass());
+			typeDesc = sootToDexTypeDescriptor.get(sootType.getClass());
 		}
+		
+		if (typeDesc == null || typeDesc.isEmpty())
+			throw new RuntimeException("Could not create type descriptor for class "
+					+ sootType);
+		return typeDesc;
 	}
 	
 	public static String getDexClassName(String dottedClassName) {
+		if (dottedClassName == null || dottedClassName.isEmpty())
+			throw new RuntimeException("Empty class name detected");
+		
 		String slashedName = dottedClassName.replace('.', '/');
+		if (slashedName.startsWith("L") && slashedName.endsWith(";"))
+			return slashedName;
 		return "L" + slashedName + ";";
 	}
 
 	public static int getDexAccessFlags(SootMethod m) {
 		int dexAccessFlags = m.getModifiers();
 		// dex constructor flag is not included in the Soot modifiers, so add it if necessary
-		if (m.isConstructor()) {
+		if (m.isConstructor() || m.getName().equals(SootMethod.staticInitializerName)) {
 			dexAccessFlags |= Modifier.CONSTRUCTOR;
 		}
 		// add declared_synchronized for dex if synchronized
@@ -91,12 +101,13 @@ public class SootToDexUtils {
 		return getDexTypeDescriptor(baseType);
 	}
 	
-	public static String getDexArrayTypeDescriptor(ArrayType sootArray) {
+	private static String getDexArrayTypeDescriptor(ArrayType sootArray) {
 		if (sootArray.numDimensions > 255) {
 			throw new RuntimeException("dex does not support more than 255 dimensions! " + sootArray + " has " + sootArray.numDimensions);
 		}
 		String baseTypeDescriptor = getDexTypeDescriptor(sootArray.baseType);
-		StringBuilder sb = new StringBuilder(sootArray.numDimensions);
+		StringBuilder sb = new StringBuilder(sootArray.numDimensions
+				+ baseTypeDescriptor.length());
 		for (int i = 0; i < sootArray.numDimensions; i++) {
 			sb.append('[');
 		}
@@ -185,15 +196,47 @@ public class SootToDexUtils {
 		return opc.name.startsWith("move") && !opc.name.startsWith("move-result");
 	}
 	
-	public static int getOffset(Object originalStmt, List<Insn> insns) {
-		for (Insn curInsn : insns) {
-			if (curInsn instanceof AddressInsn) {
-				AddressInsn curAddress = (AddressInsn) curInsn;
-				if (curAddress.getOriginalSource().equals(originalStmt)) {
-					return curAddress.getInsnOffset();
-				}
-			}
-		}
-		throw new RuntimeException("original statement not found: " + originalStmt);
-	}
+    /**
+     * Split the signature string using the same algorithm as
+     * in method 'Annotation makeSignature(CstString signature)'
+     * in dx (dx/src/com/android/dx/dex/file/AnnotationUtils.java)
+     *
+     * Rules are:
+     * ""
+     * - scan to ';' or '<'. Consume ';' but not '<'.
+     * - scan to 'L' without consuming it.
+     * ""
+     *
+     * @param sig
+     * @return
+     */
+    public static List<String> splitSignature(String sig) {
+        List<String> split = new ArrayList<String>();
+        int len = sig.length();
+        int i = 0;
+        int j = 0;
+        while (i < len) {
+            char c = sig.charAt(i);
+            if (c == 'L') {
+                j = i + 1;
+                while (j < len) {
+                    c = sig.charAt(j);
+                    if (c == ';') {
+                        j++;
+                        break;
+                    } else if (c == '<') {
+                        break;
+                    }
+                    j++;
+                }
+            } else {
+                for (j = i + 1; j < len && sig.charAt(j) != 'L'; j++) {
+                }
+            }
+            split.add(sig.substring(i, j));
+            i = j;
+        }
+        return split;
+    }
+
 }

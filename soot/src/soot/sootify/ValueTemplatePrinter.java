@@ -39,6 +39,7 @@ import soot.jimple.LeExpr;
 import soot.jimple.LengthExpr;
 import soot.jimple.LongConstant;
 import soot.jimple.LtExpr;
+import soot.jimple.MethodHandle;
 import soot.jimple.MulExpr;
 import soot.jimple.NeExpr;
 import soot.jimple.NegExpr;
@@ -172,6 +173,10 @@ public class ValueTemplatePrinter implements JimpleValueSwitch {
 	public void caseAddExpr(AddExpr v) {
 		printBinaryExpr(v);
 	}
+	
+	public void caseMethodHandle(MethodHandle handle) {
+		throw new UnsupportedOperationException("we have not yet determined how to print Java 7 method handles");
+	}
 
 	private void printBinaryExpr(BinopExpr v) {
 		String className = v.getClass().getSimpleName();
@@ -270,7 +275,6 @@ public class ValueTemplatePrinter implements JimpleValueSwitch {
 		printInvokeExpr(v);		
 	}
 
-	@SuppressWarnings("unchecked")
 	private void printInvokeExpr(InvokeExpr v) {
 		p.openBlock();		
 		
@@ -390,7 +394,6 @@ public class ValueTemplatePrinter implements JimpleValueSwitch {
 		varName = oldName;
 	}
 
-	@SuppressWarnings("unchecked")
 	public void caseNewMultiArrayExpr(NewMultiArrayExpr v) {
 		p.openBlock();
 		String oldName = varName; 
@@ -400,7 +403,7 @@ public class ValueTemplatePrinter implements JimpleValueSwitch {
 		
 		p.println("List<IntConstant> sizes = new LinkedList<IntConstant>();");
 		int i=0;
-		for(IntConstant s: (List<IntConstant>)v.getSizes()) {
+		for(Value s: v.getSizes()) {
 			this.suggestVariableName("size"+i);
 			s.apply(this);
 			i++;

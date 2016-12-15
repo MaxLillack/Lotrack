@@ -24,6 +24,7 @@ import soot.IntType;
 import soot.Local;
 import soot.LongType;
 import soot.PrimType;
+import soot.RefType;
 import soot.Scene;
 import soot.SootClass;
 import soot.SootMethod;
@@ -34,6 +35,7 @@ import soot.jimple.ArrayRef;
 import soot.jimple.Constant;
 import soot.jimple.DefinitionStmt;
 import soot.jimple.InstanceFieldRef;
+import soot.jimple.InvokeExpr;
 import soot.jimple.StaticFieldRef;
 import soot.jimple.Stmt;
 import soot.jimple.infoflow.data.Abstraction;
@@ -71,11 +73,11 @@ public abstract class AbstractInfoflowProblem
 	protected boolean enableImplicitFlows = true;
 
 	protected boolean enableStaticFields = true;
-	protected boolean enableExceptions = true;
+	protected boolean enableExceptions = false;
 	protected boolean flowSensitiveAliasing = true;
 	protected boolean enableTypeChecking = true;
 
-	protected boolean inspectSources = false;
+	protected boolean inspectSources = true;
 	protected boolean inspectSinks = false;
 
 	Abstraction zeroValue = null;
@@ -514,5 +516,55 @@ public abstract class AbstractInfoflowProblem
 	protected Abstraction getZeroValue() {
 		return zeroValue;
 	}
-
+	
+	/**
+	 * Checks whether the given call is a call to Executor.execute() or
+	 * AccessController.doPrivileged() and whether the callee matches
+	 * the expected method signature
+	 * @param ie The invocation expression to check
+	 * @param dest The callee of the given invocation expression
+	 * @return True if the given invocation expression and callee are a valid
+	 * call to Executor.execute() or AccessController.doPrivileged()
+	 */
+	protected boolean isExecutorExecute(InvokeExpr ie, SootMethod dest) {
+		if (ie == null || dest == null)
+			return false;
+		
+		SootMethod ieMethod = ie.getMethod();
+		if (!ieMethod.getName().equals("execute") && !ieMethod.getName().equals("doPrivileged"))
+			return false;
+		
+		final String ieSubSig = ieMethod.getSubSignature();
+		final String calleeSubSig = dest.getSubSignature();
+		
+		if (ieSubSig.equals("void execute(java.lang.Runnable)")
+				&& calleeSubSig.equals("void run()"))
+			return true;
+		
+		if (calleeSubSig.equals("java.lang.Object run()")) {
+			if (ieSubSig.equals("java.lang.Object doPrivileged(java.security.PrivilegedAction)"))
+				return true;
+			if (ieSubSig.equals("java.lang.Object doPrivileged(java.security.PrivilegedAction,"
+					+ "java.security.AccessControlContext)"))
+				return true;
+			if (ieSubSig.equals("java.lang.Object doPrivileged(java.security.PrivilegedExceptionAction)"))
+				return true;
+			if (ieSubSig.equals("java.lang.Object doPrivileged(java.security.PrivilegedExceptionAction,"
+					+ "java.security.AccessControlContext)"))
+				return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Checks whether the given type is a string
+	 * @param tp The type of check
+	 * @return True if the given type is a string, otherwise false
+	 */
+	protected boolean isStringType(Type tp) {
+		if (!(tp instanceof RefType))
+			return false;
+		RefType refType = (RefType) tp;
+		return refType.getClassName().equals("java.lang.String");
+	}
 }

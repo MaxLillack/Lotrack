@@ -36,7 +36,7 @@ import soot.Unit;
 import com.google.common.collect.Table.Cell;
 
 
-public class JimpleIFDSSolver<D, I extends InterproceduralCFG<Unit, SootMethod>, SootValue> extends IFDSSolver<Unit, D, SootMethod, I, SootValue> {
+public class JimpleIFDSSolver<D, I extends InterproceduralCFG<Unit, SootMethod>, SootValue> extends IFDSSolver<Unit, D, SootMethod, I> {
 
 	private final boolean DUMP_RESULTS;
 

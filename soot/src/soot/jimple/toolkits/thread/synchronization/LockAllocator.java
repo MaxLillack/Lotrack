@@ -50,7 +50,7 @@ public class LockAllocator extends SceneTransformer
 	boolean optionPrintTable = false;
 	boolean optionPrintDebug = false;
 	
-    protected void internalTransform(String phaseName, Map options)
+    protected void internalTransform(String phaseName, Map<String,String> options)
 	{
 		// Get phase options
 		String lockingScheme = PhaseOptions.getString( options, "locking-scheme" );
@@ -154,14 +154,14 @@ public class LockAllocator extends SceneTransformer
     	G.v().out.println("[wjtp.tn] *** Find and Name Transactions *** " + start);
     	Map<SootMethod, FlowSet> methodToFlowSet = new HashMap<SootMethod, FlowSet>();
     	Map<SootMethod, ExceptionalUnitGraph> methodToExcUnitGraph = new HashMap<SootMethod, ExceptionalUnitGraph>();
-    	Iterator runAnalysisClassesIt = Scene.v().getApplicationClasses().iterator();
+    	Iterator<SootClass> runAnalysisClassesIt = Scene.v().getApplicationClasses().iterator();
     	while (runAnalysisClassesIt.hasNext()) 
     	{
-    	    SootClass appClass = (SootClass) runAnalysisClassesIt.next();
-    	    Iterator methodsIt = appClass.getMethods().iterator();
+    	    SootClass appClass = runAnalysisClassesIt.next();
+    	    Iterator<SootMethod> methodsIt = appClass.getMethods().iterator();
     	    while (methodsIt.hasNext())
     	    {
-    	    	SootMethod method = (SootMethod) methodsIt.next();
+    	    	SootMethod method = methodsIt.next();
 				if(method.isConcrete())
 				{
 	    	    	Body b = method.retrieveActiveBody();
@@ -170,8 +170,8 @@ public class LockAllocator extends SceneTransformer
     		    	
     	    		// run the intraprocedural analysis
     				SynchronizedRegionFinder ta = new SynchronizedRegionFinder(eug, b, optionPrintDebug, optionOpenNesting, tlo);
-    				Chain units = b.getUnits();
-    				Unit lastUnit = (Unit) units.getLast();
+    				Chain<Unit> units = b.getUnits();
+    				Unit lastUnit = units.getLast();
     				FlowSet fs = (FlowSet) ta.getFlowBefore(lastUnit);
     			
     				// add the results to the list of results
@@ -617,17 +617,17 @@ public class LockAllocator extends SceneTransformer
 			CriticalSection tn = tnAIt.next();
 			if(tn.setNumber <= 0)
 				continue;
-			ExceptionalUnitGraph egraph = new ExceptionalUnitGraph(tn.method.retrieveActiveBody());
-			SmartLocalDefs sld = new SmartLocalDefs(egraph, new SimpleLiveLocals(egraph));
+			
+			LocalDefs ld = LocalDefs.Factory.newLocalDefs(tn.method.retrieveActiveBody());
+			
 			if(tn.origLock == null || !(tn.origLock instanceof Local)) // || tn.begin == null)
 				continue;
-			List<Unit> rDefs = sld.getDefsOfAt( (Local) tn.origLock , tn.entermonitor );
+			List<Unit> rDefs = ld.getDefsOfAt( (Local) tn.origLock , tn.entermonitor );
 			if(rDefs == null)
 				continue;
-			Iterator<Unit> rDefsIt = rDefs.iterator();
-			while (rDefsIt.hasNext())
+			for (Unit u : rDefs)
 			{
-				Stmt next = (Stmt) rDefsIt.next();
+				Stmt next = (Stmt) u;
 				if(next instanceof DefinitionStmt)
 				{
 					Value rightOp = ((DefinitionStmt) next).getRightOp();

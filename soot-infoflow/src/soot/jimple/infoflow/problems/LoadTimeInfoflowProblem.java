@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,9 +31,11 @@ import org.slf4j.LoggerFactory;
 
 import soot.ArrayType;
 import soot.Body;
+import soot.BooleanType;
 import soot.IntType;
 import soot.Local;
 import soot.RefType;
+import soot.Scene;
 import soot.SootField;
 import soot.SootMethod;
 import soot.Type;
@@ -50,6 +53,7 @@ import soot.jimple.IdentityStmt;
 import soot.jimple.IfStmt;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InstanceInvokeExpr;
+import soot.jimple.InstanceOfExpr;
 import soot.jimple.IntConstant;
 import soot.jimple.InvokeExpr;
 import soot.jimple.LengthExpr;
@@ -68,31 +72,29 @@ import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.data.AbstractionAtSink;
 import soot.jimple.infoflow.data.AccessPath;
 import soot.jimple.infoflow.data.SourceContext;
-import soot.jimple.infoflow.data.SourceContextAndPath;
 import soot.jimple.infoflow.handlers.TaintPropagationHandler;
 import soot.jimple.infoflow.handlers.TaintPropagationHandler.FlowFunctionType;
 import soot.jimple.infoflow.util.ConcurrentHashSet;
 import soot.jimple.infoflow.solver.IInfoflowCFG.UnitContainer;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
-import soot.jimple.infoflow.solver.IInfoflowSolver;
 import soot.jimple.infoflow.solver.functions.SolverCallFlowFunction;
 import soot.jimple.infoflow.solver.functions.SolverCallToReturnFlowFunction;
 import soot.jimple.infoflow.solver.functions.SolverNormalFlowFunction;
 import soot.jimple.infoflow.solver.functions.SolverReturnFlowFunction;
 import soot.jimple.infoflow.loadtime.FeatureInfo;
+import soot.jimple.infoflow.loadtime.LoadTimeHelperImpl;
 import soot.jimple.infoflow.source.ISourceSinkManager;
 import soot.jimple.infoflow.source.SourceInfo;
 import soot.jimple.infoflow.util.BaseSelector;
-import soot.jimple.toolkits.ide.icfg.BiDiInterproceduralCFG;
-import soot.toolkits.graph.DirectedGraph;
-import soot.toolkits.graph.UnitGraph;
-import soot.toolkits.scalar.SimpleLiveLocals;
+import soot.spl.ifds.LoadTimeHelper;
+import soot.toolkits.graph.ExceptionalGraph;
+import soot.toolkits.graph.ExceptionalUnitGraph;
+import soot.toolkits.graph.MHGPostDominatorsFinder;
+import soot.toolkits.graph.PostDominatorAnalysis;
 
-
-
-
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
 public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 	
@@ -111,6 +113,8 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 	
 	private InterproceduralCFG<Unit, SootMethod> icfg;
 	
+	private LoadingCache<Stmt, Set<SootField>> fieldReadCache; 
+	private LoadingCache<Stmt, Set<SootField>> fieldWriteCache; 
 	/**
 	 * Computes the taints produced by a taint wrapper object
 	 * @param d1 The context (abstraction at the method's start node)
@@ -176,18 +180,36 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 						boolean taintedValueOverwritten = (iStmt instanceof DefinitionStmt)
 								? baseMatches(((DefinitionStmt) iStmt).getLeftOp(), source) : false;
 						
-						if(!taintedValueOverwritten && iStmt instanceof DefinitionStmt) {
-							taintedValueOverwritten = ((DefinitionStmt) iStmt).getLeftOp().equals(source.getSourceContext().getValue());
-						}
+//						if(!taintedValueOverwritten && iStmt instanceof DefinitionStmt) {
+//							taintedValueOverwritten = ((DefinitionStmt) iStmt).getLeftOp().equals(source.getSourceContext().getValue());
+//						}
 						
-						if(!(old.getIndex() == -1 || taintedValueOverwritten)) {
-							featureInfo = new FeatureInfo(val, old.getValue(), old.getIndex());
+						if(!taintedValueOverwritten) {
+							// After a method call, we taint the results but fall back to imprecise value tracking
+							featureInfo = new FeatureInfo(val, -1, -1, old.getBestIndexAvailable(), old.getIsAnti());
+							
+							// Simple hack to keep precise taint through parseInt()
+							// TODO Cache methods names, check whether this should be implemented in taintwrapper
+							String methodName = iStmt.getInvokeExpr().getMethod().getName();
+							if(methodName.equals("parseInt")) {
+								featureInfo = new FeatureInfo(old);
+								featureInfo.setVariable(val);
+							}
+							
+							if(newAbs.isImplicit())
+							{
+//								featureInfo.setVariable(AccessPath.getEmptyAccessPath());
+								featureInfo.setValue(-2);
+							}
 						}
 					}
 					
-					newAbs.setSourceContext(new SourceContext(val.getPlainValue(), iStmt, featureInfo));
-					res.add(newAbs);
-				
+					if(featureInfo != null)
+					{
+						newAbs.setSourceContext(new SourceContext(newAbs.getAccessPath(), iStmt, featureInfo));
+						res.add(newAbs);
+					}
+					
 					// If the taint wrapper creates a new taint, this must be propagated
 					// backwards as there might be aliases for the base object
 					// Note that we don't only need to check for heap writes such as a.x = y,
@@ -252,8 +274,12 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 	{
 		//int i = 0;
 		//logger.info("commonComputeTargets({})", a1);
-		
-		//logger.info("Statement is {}", src);			
+		//logger.info("Statement is {}", src);		
+//		if(src.toString().startsWith("if $z3 == 0 goto") && icfg.getMethodOf(src).toString().contains("loadSpecificPlugin"))
+//		if(src.toString().equals("$z6 = virtualinvoke $r1.<java.lang.String: boolean contains(java.lang.CharSequence)>(\"ARMv7\")"))
+//		{
+//			int a = 0;
+//		}
 	}
 	
 
@@ -279,52 +305,78 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 			 */
 			private Abstraction addTaintViaStmt
 					(final Abstraction d1,
-					final Stmt src,
+					final AssignStmt assignStmt,
 					final Value targetValue,
 					Abstraction source,
 					Set<Abstraction> taintSet,
 					boolean cutFirstField,
 					SootMethod method,
 					Type targetType) {
-				// Keep the original taint
-				taintSet.add(source);
+				
+				final Value leftValue = assignStmt.getLeftOp();
+				final Value rightValue = assignStmt.getRightOp();
 				
 				// Do not taint static fields unless the option is enabled
-				if (!enableStaticFields && targetValue instanceof StaticFieldRef)
+				if (!enableStaticFields && leftValue instanceof StaticFieldRef) {
 					return null;
+				}
 				
-				// Strip array references to their respective base
-				Value baseTarget = targetValue;
-				if (targetValue instanceof ArrayRef)
-					baseTarget = ((ArrayRef) targetValue).getBase();
-
-				// also taint the target of the assignment
 				Abstraction newAbs = null;
-				if (source.getAccessPath().isEmpty())
-					newAbs = source.deriveNewAbstraction(new AccessPath(targetValue, true), src, true);
+				if (!source.getAccessPath().isEmpty()) {
+					// Special handling for array (de)construction
+					if (leftValue instanceof ArrayRef && targetType != null)
+						targetType = buildArrayOrAddDimension(targetType);
+					else if (assignStmt.getRightOp() instanceof ArrayType && targetType != null)
+						targetType = ((ArrayType) assignStmt.getRightOp()).getElementType();
+					
+					// If this is an unrealizable typecast, drop the abstraction
+					if (rightValue instanceof CastExpr) {
+						// If we cast java.lang.Object to an array type,
+						// we must update our typing information
+						CastExpr cast = (CastExpr) assignStmt.getRightOp();
+						if (cast.getType() instanceof ArrayType && !(targetType instanceof ArrayType)) {
+							assert canCastType(targetType, cast.getType());
+							
+							// If the cast was realizable, we can assume that we had the
+							// type to which we cast.
+							targetType = cast.getType();
+						}
+					}
+					// Special type handling for certain operations
+					else if (rightValue instanceof InstanceOfExpr)
+						newAbs = source.deriveNewAbstraction(new AccessPath(leftValue, null,
+								BooleanType.v(), (Type[]) null, true), assignStmt);
+				}
 				else
-					newAbs = source.deriveNewAbstraction(baseTarget, cutFirstField, src, targetType);
+					// For implicit taints, we have no type information
+					assert targetType == null;
+				
+				// also taint the target of the assignment
+				if (newAbs == null)
+					// TODO - check second part of condition
+					if (source.getAccessPath().isEmpty() || (leftValue instanceof InstanceFieldRef && !source.getAccessPath().getTaintSubFields()))
+						newAbs = source.deriveNewAbstraction(new AccessPath(leftValue, true), assignStmt, true);
+					else
+						newAbs = source.deriveNewAbstraction(leftValue, cutFirstField, assignStmt, targetType);
 				
 				// @ TODO
 				newAbs.setSourceContext(source.getSourceContext());
 				
-				taintSet.add(newAbs);
 								
-				if (triggerInaktiveTaintOrReverseFlow(src, targetValue, newAbs)
+				if (triggerInaktiveTaintOrReverseFlow(assignStmt, targetValue, newAbs)
 						&& newAbs.isAbstractionActive()) {
 					// If we overwrite the complete local, there is no need for
 					// a backwards analysis
 					if (!(aliasing.mustAlias(targetValue, newAbs.getAccessPath().getPlainValue())
 							&& newAbs.getAccessPath().isLocal()))
 						if(d1 != null)
-							computeAliasTaints(d1, src, targetValue, taintSet, method, newAbs);
+							computeAliasTaints(d1, assignStmt, targetValue, taintSet, method, newAbs);
 				}
 				
 				return newAbs;
 			}
 			
-			private boolean isFieldReadByCallee(
-					final Set<SootField> fieldsReadByCallee, Abstraction source) {
+			private boolean isFieldReadByCallee(final Set<SootField> fieldsReadByCallee, Abstraction source) {
 				if (fieldsReadByCallee == null)
 					return true;
 				return fieldsReadByCallee.contains(source.getAccessPath().getFirstField());
@@ -372,13 +424,10 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 								
 								
 								Value rightVal = is.getRightOp();
-								boolean value = false;
+								int value = -1;
 								int featureIndex = -1;
 								if(rightVal instanceof NumericConstant) {
-									int val = Integer.parseInt(rightVal.toString());
-									if(val == 1) {
-										value = true;
-									}
+									value = Integer.parseInt(rightVal.toString());
 								} else if(rightVal.equals(oldFeatureInfo.getVariable().getPlainLocal())) {
 									value = oldFeatureInfo.getValue();
 									featureIndex = oldFeatureInfo.getIndex();
@@ -386,7 +435,9 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									throw new UnsupportedOperationException("Undefined handling of rightVal " + rightVal.toString());
 								}
 								
-								FeatureInfo featureInfo = new FeatureInfo(new AccessPath(is.getLeftOp(), false), value, featureIndex);
+								// We create a taint with a concrete value and a featuere index of -1 to indicate a derived value
+								// Or we copy the information from another taint
+								FeatureInfo featureInfo = new FeatureInfo(new AccessPath(is.getLeftOp(), sourceInfo.getTaintSubFields()), value, featureIndex, (value == -1 ? oldFeatureInfo.getBestIndexAvailable() : null), oldFeatureInfo.getIsAnti());
 								
 								final Abstraction abs = new Abstraction(is.getLeftOp(), sourceInfo.getTaintSubFields(), is.getRightOp(), 
 										is, featureInfo, false, false);
@@ -409,7 +460,8 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							}
 
 							if (addOriginal)
-								res.add(source);
+								if (source != getZeroValue())
+									res.add(source);
 							
 							return res;
 						}
@@ -459,7 +511,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							// Fields can be sources in some cases
                             if (source.equals(zeroValue) && sourceInfo != null) {
                             	
-                            	Value rightVal = assignStmt.getRightOp();
+//                            	Value rightVal = assignStmt.getRightOp();
                             	// We are precise about NumericConstant but in all other cases assume true for boolean value
 //								boolean value = true;
 //								if(rightVal instanceof NumericConstant) {
@@ -469,7 +521,9 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 //									}
 //								}
 								
-								FeatureInfo featureInfo = new FeatureInfo(new AccessPath(assignStmt.getLeftOp(), false), true, (int) sourceInfo.getUserData());
+                            	// Create a new taint with a value -1 to show is presents no specific value but all possible
+                            	// The feature index (third parameter) shows the connection between the taint and the config option
+								FeatureInfo featureInfo = new FeatureInfo(new AccessPath(assignStmt.getLeftOp(), sourceInfo.getTaintSubFields()), -1, (int) sourceInfo.getUserData(), null);
                             	
 								final Abstraction abs = new Abstraction(assignStmt.getLeftOp(), sourceInfo.getTaintSubFields(), assignStmt.getRightOp(), 
 										assignStmt, featureInfo, false, false);
@@ -477,11 +531,11 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 								res.add(abs);
 								
 								if(sourceSinkManager.trackPrecise(sourceInfo)) {
-									FeatureInfo featureInfo2 = new FeatureInfo(new AccessPath(assignStmt.getLeftOp(), false), false, (int) sourceInfo.getUserData());
-	                            	
-									final Abstraction abs2 = new Abstraction(assignStmt.getLeftOp(), sourceInfo.getTaintSubFields(), assignStmt.getRightOp(), 
-											assignStmt, featureInfo2, false, false);
-									res.add(abs2);
+//									FeatureInfo featureInfo2 = new FeatureInfo(new AccessPath(assignStmt.getLeftOp(), false), 0, (int) sourceInfo.getUserData());
+//	                            	
+//									final Abstraction abs2 = new Abstraction(assignStmt.getLeftOp(), sourceInfo.getTaintSubFields(), assignStmt.getRightOp(), 
+//											assignStmt, featureInfo2, false, false);
+//									res.add(abs2);
 								}
                                 
                                 
@@ -523,7 +577,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 								if (d1 != null && d1.getAccessPath().isEmpty() && !(leftValue instanceof FieldRef))
 									return Collections.singleton(newSource);
 								
-								if (newSource.getAccessPath().isEmpty())
+								if (newSource.getAccessPath().isEmpty() /* && assignStmt.getRightOp() instanceof Constant */)
 									addLeftValue = true;
 							}
 							
@@ -538,7 +592,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							boolean cutFirstField = false;
 							AccessPath mappedAP = newSource.getAccessPath();
 							Type targetType = null;
-							if (!addLeftValue && !aliasOverwritten) {
+							if (!addLeftValue && !aliasOverwritten /*&& !newSource.getAccessPath().isEmpty()*/) {
 								for (Value rightValue : rightVals) {
 									if (rightValue instanceof FieldRef) {
 										// Get the field reference and check for aliasing
@@ -614,6 +668,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 
 							// if one of them is true -> add leftValue
 							if (addLeftValue) {
+								
 								// If the right side is a typecast, it must be compatible,
 								// or this path is not realizable
 								if (assignStmt.getRightOp() instanceof CastExpr) {
@@ -627,6 +682,8 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									if (assignStmt.getRightOp() instanceof LengthExpr) {
 										assert newSource.getAccessPath().getBaseType() instanceof ArrayType;
 										targetType = IntType.v();
+										// not needed for for config map
+										return Collections.emptySet();
 									}
 									else if (assignStmt.getRightOp() instanceof CastExpr) {
 										// If we cast java.lang.Object to an array type,
@@ -645,10 +702,14 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									
 									// Special handling for array (de)construction
 									if (targetType != null) {
-										if (leftValue instanceof ArrayRef)
-											targetType = ArrayType.v(targetType, 1);
-										else if (assignStmt.getRightOp() instanceof ArrayRef)
-											targetType = ((ArrayType) targetType).getArrayElementType();
+										if (leftValue instanceof ArrayRef && targetType != null)
+											targetType = buildArrayOrAddDimension(targetType);
+										else if (assignStmt.getRightOp() instanceof ArrayRef && targetType != null) {
+											// Extra check before type cast
+											if(targetType instanceof ArrayType) {
+												targetType = ((ArrayType) targetType).getElementType();
+											}
+										}
 									}
 								}
 								else
@@ -656,19 +717,15 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 								
 								if( newSource.isAbstractionActive())
 								{
-									Abstraction newAbs = addTaintViaStmt(d1, (Stmt) src, leftValue, newSource, res, cutFirstField,
+									Abstraction newAbs = addTaintViaStmt(d1, (AssignStmt) src, leftValue, newSource, res, cutFirstField,
 											interproceduralCFG().getMethodOf(src), targetType);
 									
-									assert rightVals != null;
-									assert rightVals.size() < 2;
-									
 									if(rightVals != null) {
-										assert rightVals.size() == 1;
 										// TODO - Variable aufnehmen und dann SPÄTER über Abstractions den Wert auslessen
-										
-										Value rightVal = rightVals.iterator().next();
-										Boolean value = null;
+										Integer value = -1;
 										int featureIndex = -1;
+										Integer impreciseIndex = null;
+										boolean isAnti = false;
 										
 										SourceContext oldSourceContext = newSource.getSourceContext();
 										FeatureInfo featureInfo = null;
@@ -676,35 +733,46 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 											featureInfo = (FeatureInfo) oldSourceContext.getUserData();
 										}
 										
-
-										if(rightVal instanceof IntConstant) {
-											int val = Integer.parseInt(rightVals.iterator().next().toString());
-											if(val == 0) {
-												value = false;
-											}
-											if(val == 1) {
-												value = true;
+										if(rightVals.size() == 1) {
+											Value rightVal = rightVals.iterator().next();
+											if(rightVal instanceof IntConstant) {
+												value = Integer.parseInt(rightVals.iterator().next().toString());
 											}
 										}
-										AccessPath ap = null;
-										if(featureInfo != null /*&& rightVal.equals(featureInfo.getVariableName()*/ /*&& aliasing.mayAlias(rightVal, featureInfo.getVariable().getPlainValue())*/
-												&& copyTaintInformation) {
-
-										    value = featureInfo.getValue();
-											featureIndex = featureInfo.getIndex();
-											ap = featureInfo.getVariable().copyWithNewValue(leftValue);
+										
+										AccessPath ap = newAbs.getAccessPath();
+										
+										FeatureInfo newFeatureInfo = null;
+										if(featureInfo != null) {
+											if(copyTaintInformation && rightVals.size() == 1)
+											{
+												value = featureInfo.getValue();
+												featureIndex = featureInfo.getIndex();
+												impreciseIndex = featureInfo.getImpreciseIndex();
+												isAnti = featureInfo.getIsAnti();
+											} else if(copyTaintInformation) { 
+												// Keep value
+												featureIndex = -1;
+												impreciseIndex = featureInfo.getBestIndexAvailable();
+											} else {
+												
+												// If we don't know the exact value and should not copy the source's, we indicate a irrelevant value
+												if(value == -1) {
+													value = -2;
+												}
+												featureIndex = -1;
+												impreciseIndex = featureInfo.getBestIndexAvailable();
+											}
+											if(value != null) {
+												newFeatureInfo = new FeatureInfo(ap, value, featureIndex, impreciseIndex, isAnti);
+											}
 										} 
 										
-										if(ap == null)
-										{
-											ap = new AccessPath(leftValue, false);
-										}
-										
-										SourceContext sourceContext = new SourceContext(leftValue, 
-												 										(Stmt) src, 
-												 										value != null ? new FeatureInfo(ap, value, featureIndex) : null);
+										SourceContext sourceContext = new SourceContext(ap, (Stmt) src, newFeatureInfo);
 										newAbs.setSourceContext(sourceContext);
 									}
+									
+									res.add(newAbs);
 								}
 								
 								res.add(newSource);
@@ -840,8 +908,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 						@Override
 						public Set<Abstraction> computeTargets(Abstraction source) {
 							commonComputeTargets(source, src);
-							//logger.info("detected if statement {}", src);
-									
+							//logger.info("detected if statement {}", src);							
 							if (stopAfterFirstFlow && !results.isEmpty())
 								return Collections.emptySet();
 
@@ -866,6 +933,16 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							
 							Set<Abstraction> res = new HashSet<Abstraction>();
 							res.add(source);
+							
+							// If we have an anti-abstraction, we will re-propagte zero so it will update the edges and possibly loosen the constraints
+							if(source.getSourceContext() != null && source.getSourceContext().getUserData() != null)
+							{
+								FeatureInfo featureInfo = (FeatureInfo) source.getSourceContext().getUserData();
+								if(featureInfo.getIsAnti())
+								{
+									res.add(zeroValue);
+								}
+							}
 
 							Set<Value> values = new HashSet<Value>();
 							if (condition instanceof Local)
@@ -875,7 +952,8 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									values.add(box.getValue());
 														
 							for (Value val : values)
-								if (aliasing.mayAlias(val, source.getAccessPath().getPlainValue())) {
+//								if (aliasing.mayAlias(val, source.getAccessPath().getPlainValue())) {
+								if (aliasing.mayAlias(val, source.getAccessPath().getPlainValue()) && aliasing.mayAlias(new AccessPath(val, false), source.getAccessPath()) != null) {
 									// ok, we are now in a branch that depends on a secret value.
 									// We now need the postdominator to know when we leave the
 									// branch again.
@@ -884,11 +962,26 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 //									logger.info("src now has {} tags", tags.size());
 									
 									UnitContainer postdom = interproceduralCFG().getPostdominatorOf(src);
+									
 									if (!(postdom.getMethod() == null
 											&& source.getTopPostdominator() != null
 											&& interproceduralCFG().getMethodOf(postdom.getUnit()) == source.getTopPostdominator().getMethod())) {
 										Abstraction newAbs = source.deriveConditionalAbstractionEnter(postdom, (Stmt) src);
-										newAbs.setSourceContext(source.getSourceContext());
+										// We remove unnecessary information from featureInfo
+										
+										SourceContext oldSourceContext = source.getSourceContext();
+										if(oldSourceContext != null && oldSourceContext.getUserData() != null)
+										{
+											FeatureInfo featureInfo = new FeatureInfo((FeatureInfo) oldSourceContext.getUserData());
+											featureInfo.setVariable(AccessPath.getEmptyAccessPath());
+											featureInfo.setValue(-1);
+											newAbs.setSourceContext(new SourceContext(oldSourceContext.getSymbolic(), featureInfo));
+										} else {
+											// @TODO is null sourcecontext allowed?
+											newAbs.setSourceContext(source.getSourceContext());
+										}
+										
+										
 										res.add(newAbs);
 										break;
 									}
@@ -911,16 +1004,15 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 				final InvokeExpr ie = stmt.getInvokeExpr();
 				
 				final List<Value> callArgs = ie.getArgs();				
-				final List<Value> paramLocals = new ArrayList<Value>(dest.getParameterCount());
-				for (int i = 0; i < dest.getParameterCount(); i++)
-					paramLocals.add(dest.getActiveBody().getParameterLocal(i));
 				
 //				final SourceInfo sourceInfo = sourceSinkManager != null
 //						? sourceSinkManager.getSourceInfo((Stmt) src, interproceduralCFG()) : null;
 				//final boolean isSink = sourceSinkManager != null
 				//		? sourceSinkManager.isSink(stmt, interproceduralCFG()) : false;
 				
-
+				// This is not cached by Soot, so accesses are more expensive
+				// than one might think
+				final Local thisLocal = dest.isStatic() ? null : dest.getActiveBody().getThisLocal();
 
 				return new SolverCallFlowFunction() {
 
@@ -941,11 +1033,15 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 
 						// If we have an exclusive taint wrapper for the target
 						// method, we do not perform an own taint propagation. 
-						if(taintWrapper != null && taintWrapper.isExclusive(stmt, source.getAccessPath(),
-								interproceduralCFG())) {
-							//taint is propagated in CallToReturnFunction, so we do not need any taint here:
-							return Collections.emptySet();
+						
+						synchronized (Scene.v()) {
+							if(taintWrapper != null && taintWrapper.isExclusive(stmt, source.getAccessPath(),
+									interproceduralCFG())) {
+								//taint is propagated in CallToReturnFunction, so we do not need any taint here:
+								return Collections.emptySet();
+							}
 						}
+
 						
 						//if we do not have to look into sources or sinks:
 						//if (!inspectSources && isSource)
@@ -977,8 +1073,35 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							}
 							
 							Abstraction abs = source.deriveConditionalAbstractionCall(src);
-							abs.setSourceContext(new SourceContext(abs, source.getSourceContext().getUserData()));
-							return Collections.singleton(abs);
+							if(source.getSourceContext() != null) {
+								abs.setSourceContext(new SourceContext(abs, source.getSourceContext().getUserData()));
+							}
+							
+							Set<Abstraction> res = new HashSet<Abstraction>();
+//							res.add(abs);
+							
+							// Create taints for constant parameters to enable value tracking
+							if (dest.getParameterCount() > 0) {
+								Local[] paramLocals = dest.getActiveBody().getParameterLocals().toArray(new Local[0]);
+								assert dest.getParameterCount() == ie.getArgCount();
+								// check if param is tainted:
+								for (int i = 0; i < ie.getArgCount(); i++) {
+									if(callArgs.get(i) instanceof IntConstant && source.getSourceContext() != null && source.getSourceContext().getUserData() != null) {
+										FeatureInfo oldFeatureInfo = (FeatureInfo) source.getSourceContext().getUserData();
+										
+										IntConstant intConstant = (IntConstant) callArgs.get(i);
+										
+										FeatureInfo featureInfo = new FeatureInfo(new AccessPath(paramLocals[i], false), intConstant.value, oldFeatureInfo.getIndex(), oldFeatureInfo.getImpreciseIndex(), oldFeatureInfo.getIsAnti());
+										SourceInfo sourceInfo = new SourceInfo(false, featureInfo);
+										Abstraction parameterAbs = new Abstraction(paramLocals[i], sourceInfo, null, stmt, false, false);
+	
+										res.add(parameterAbs);
+									}
+								}
+							}
+							
+							
+							return res;
 						}
 						else if (source.getTopPostdominator() != null)
 							return Collections.emptySet();
@@ -990,57 +1113,72 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 
 						// Only propagate the taint if the target field is actually read
 						if (enableStaticFields && source.getAccessPath().isStaticFieldRef()) {
-							final Set<SootField> fieldsReadByCallee = enableStaticFields ? interproceduralCFG().getReadVariables
-									(interproceduralCFG().getMethodOf(stmt), stmt) : null;
-							if (fieldsReadByCallee != null && !isFieldReadByCallee(fieldsReadByCallee, source))
+//							Set<SootField> fieldsReadByCallee = interproceduralCFG().getReadVariables(interproceduralCFG().getMethodOf(stmt), stmt);
+							// use Cache
+							Set<SootField> fieldsReadByCallee = fieldReadCache.getUnchecked(stmt);
+							if (fieldsReadByCallee != null && !isFieldReadByCallee(fieldsReadByCallee, source)) {
 								return Collections.emptySet();
-						}
-						
-						Set<Abstraction> res = new HashSet<Abstraction>();
-						// check if whole object is tainted (happens with strings, for example:)
-						if (!dest.isStatic() && ie instanceof InstanceInvokeExpr) {
-							InstanceInvokeExpr vie = (InstanceInvokeExpr) ie;
-							if (aliasing.mayAlias(vie.getBase(), source.getAccessPath().getPlainValue()))
-								if (hasCompatibleTypesForCall(source.getAccessPath(), dest.getDeclaringClass())) {
-									Abstraction abs = source.deriveNewAbstraction(source.getAccessPath().copyWithNewValue
-											(dest.getActiveBody().getThisLocal()), stmt);
-									abs.setSourceContext(new SourceContext(dest.getActiveBody().getThisLocal(), stmt, source.getSourceContext().getUserData()));
-									res.add(abs);
-								}
-						}
-						
-						// staticfieldRefs must be analyzed even if they are not part of the params:
-						if (enableStaticFields && source.getAccessPath().isStaticFieldRef())
-							res.add(source);
-
-						//special treatment for clinit methods - no param mapping possible	
-						if(!dest.getName().equals("<clinit>")) {
-							assert dest.getParameterCount() == callArgs.size();
-							// check if param is tainted:
-							for (int i = 0; i < callArgs.size(); i++) {
-								if (aliasing.mayAlias(callArgs.get(i), source.getAccessPath().getPlainLocal())) {
-									if(i < paramLocals.size()) {
-										AccessPath newAP = source.getAccessPath().copyWithNewValue(paramLocals.get(i));
-										Abstraction abs = source.deriveNewAbstraction(newAP, stmt);
-										
-										FeatureInfo originalFeatureInfo =  null;
-										if(source.getSourceContext() != null && source.getSourceContext().getUserData() != null) {
-											SourceContext sourceContext = source.getSourceContext();
-											originalFeatureInfo = (FeatureInfo)sourceContext.getUserData();
-										}
-										
-										FeatureInfo featureInfo = null;
-										if(originalFeatureInfo != null) {
-											featureInfo = new FeatureInfo(newAP, originalFeatureInfo.getValue(), originalFeatureInfo.getIndex());
-										}
-										abs.setSourceContext(new SourceContext(paramLocals.get(i), stmt, featureInfo));
-										res.add(abs);
-									}
-								}
 							}
 						}
-	
-						return res;
+						
+						// Map the source access path into the callee
+						Value[] paramLocals = null;
+						Set<AccessPath> res = mapAccessPathToCallee(dest, ie, paramLocals, thisLocal, source.getAccessPath());
+						if (res == null)
+							return Collections.emptySet();
+						
+						// Translate the access paths into abstractions
+						Set<Abstraction> resAbs = new HashSet<Abstraction>(res.size());
+						for (AccessPath ap : res)
+						{
+							if (ap.isStaticFieldRef()) {
+								// Do not propagate static fields that are not read inside the callee 
+								if (interproceduralCFG().isStaticFieldRead(dest, ap.getFirstField())) {
+									Abstraction abs = source.deriveNewAbstraction(ap, stmt);
+									
+									FeatureInfo originalFeatureInfo =  null;
+									if(source.getSourceContext() != null && source.getSourceContext().getUserData() != null) {
+										SourceContext sourceContext = source.getSourceContext();
+										originalFeatureInfo = (FeatureInfo)sourceContext.getUserData();
+									}
+									
+									FeatureInfo featureInfo = null;
+									if(originalFeatureInfo != null) {
+										featureInfo = new FeatureInfo(ap, originalFeatureInfo.getValue(), originalFeatureInfo.getIndex(), originalFeatureInfo.getImpreciseIndex(), originalFeatureInfo.getIsAnti());
+									}
+									abs.setSourceContext(new SourceContext(ap, stmt, featureInfo));
+									
+									resAbs.add(abs);
+								}
+							}
+							// If the variable is never read in the callee, there is no
+							// need to propagate it through
+							else if (source.isImplicit() || interproceduralCFG().methodReadsValue(dest, ap.getPlainValue()))
+							{
+								Abstraction abs = source.deriveNewAbstraction(ap, stmt);
+								
+								FeatureInfo originalFeatureInfo =  null;
+								if(source.getSourceContext() != null && source.getSourceContext().getUserData() != null) {
+									SourceContext sourceContext = source.getSourceContext();
+									originalFeatureInfo = (FeatureInfo)sourceContext.getUserData();
+								}
+								
+								FeatureInfo featureInfo = null;
+								if(originalFeatureInfo != null) {
+									featureInfo = new FeatureInfo(ap, originalFeatureInfo.getValue(), originalFeatureInfo.getIndex(), originalFeatureInfo.getImpreciseIndex(), originalFeatureInfo.getIsAnti());
+									if(source.getAccessPath().isEmpty())
+									{
+										// If source is implicit, variable name is useless.
+										featureInfo.setVariable(AccessPath.getEmptyAccessPath());
+										featureInfo.setValue(-1);
+									}
+								}
+								abs.setSourceContext(new SourceContext(ap, stmt, featureInfo));
+								
+								resAbs.add(abs);
+							}
+						}
+						return resAbs;
 					}
 				};
 			}
@@ -1087,8 +1225,10 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 						// Empty access paths are never propagated over return edges
 						if (source.getAccessPath().isEmpty()) {
 							// If we return a constant, we must taint it
-							if (returnStmt != null && returnStmt.getOp() instanceof Constant)
-								if (callSite instanceof DefinitionStmt) {
+							if (returnStmt != null && returnStmt.getOp() instanceof Constant) {
+								boolean isSource = sourceSinkManager.getSourceInfo((Stmt)callSite, icfg) != null;		
+										
+								if (callSite instanceof DefinitionStmt && !isSource) {
 									DefinitionStmt def = (DefinitionStmt) callSite;
 									Abstraction abs = newSource.deriveNewAbstraction
 											(newSource.getAccessPath().copyWithNewValue(def.getLeftOp()), (Stmt) exitStmt);
@@ -1096,25 +1236,20 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									
 									FeatureInfo featureInfo = null;
 									if(newSource.getSourceContext() != null) {
-										Boolean value = null;
+										Integer value = null;
 										if(returnStmt.getOp() instanceof IntConstant) {
-											if(((IntConstant) returnStmt.getOp()).value == 0)
-											{
-												value = false;
-											} else {
-												value = true;
-											}
+											value = ((IntConstant) returnStmt.getOp()).value;
 										}
 										FeatureInfo oldFeatureInfo = (FeatureInfo) newSource.getSourceContext().getUserData();
 										if(oldFeatureInfo != null) {
 											if(value == null) {
 												value = oldFeatureInfo.getValue();
 											}
-											featureInfo = new FeatureInfo(new AccessPath(def.getLeftOp(), false), value, oldFeatureInfo.getIndex());
+											featureInfo = new FeatureInfo(new AccessPath(def.getLeftOp(), false), value, -1, oldFeatureInfo.getBestIndexAvailable(), oldFeatureInfo.getIsAnti());
 										}
 									}
 
-									abs.setSourceContext(new SourceContext(def.getLeftOp(), (Stmt) exitStmt, featureInfo));
+									abs.setSourceContext(new SourceContext(new AccessPath(def.getLeftOp(), false), (Stmt) exitStmt, featureInfo));
 
 									
 									HashSet<Abstraction> res = new HashSet<Abstraction>();
@@ -1129,7 +1264,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									
 									return res;
 								}
-							
+							}
 							// Kill the empty abstraction
 							return Collections.emptySet();
 						}
@@ -1191,9 +1326,9 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 								FeatureInfo featureInfo = null;
 								if(sourceContext != null && sourceContext.getUserData() != null) {
 									FeatureInfo originalFeatureInfo = (FeatureInfo)sourceContext.getUserData();
-									featureInfo = new FeatureInfo(new AccessPath(leftOp, false), originalFeatureInfo.getValue(), originalFeatureInfo.getIndex());
+									featureInfo = new FeatureInfo(newSource.getAccessPath().copyWithNewValue(leftOp), originalFeatureInfo.getValue(), originalFeatureInfo.getIndex(), originalFeatureInfo.getBestIndexAvailable(), originalFeatureInfo.getIsAnti());
 								}
-								abs.setSourceContext(new SourceContext(leftOp, defnStmt, featureInfo));
+								abs.setSourceContext(new SourceContext(newSource.getAccessPath().copyWithNewValue(leftOp), defnStmt, featureInfo));
 								res.add(abs);
 								
 								// Aliases of implicitly tainted variables must be mapped back
@@ -1262,22 +1397,32 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									if (!AccessPath.canContainValue(originalCallArg))
 										continue;
 									
-									Abstraction abs = newSource.deriveNewAbstraction
-											(newSource.getAccessPath().copyWithNewValue(originalCallArg), (Stmt) exitStmt);
-									
-									abs.setSourceContext(new SourceContext(originalCallArg, (Stmt) exitStmt, newSource.getSourceContext().getUserData()));
-			
-									res.add(abs);
-
-									// Aliases of implicitly tainted variables must be mapped back
-									// into the caller's context on return when we leave the last
-									// implicitly-called method
-									if ((abs.isImplicit()
-											&& triggerInaktiveTaintOrReverseFlow((Stmt) callSite, originalCallArg, newSource)
-											&& !callerD1sConditional) || aliasingStrategy.requiresAnalysisOnReturn())
-										for (Abstraction d1 : callerD1s)
-											computeAliasTaints(d1, (Stmt) callSite, originalCallArg, res,
-												interproceduralCFG().getMethodOf(callSite), abs);											
+									if(newSource.getSourceContext() != null) {
+										Abstraction abs = newSource.deriveNewAbstraction
+												(newSource.getAccessPath().copyWithNewValue(originalCallArg), (Stmt) exitStmt);
+										
+										FeatureInfo featureInfo = null;
+										if(newSource.getSourceContext().getUserData() != null)
+										{
+											featureInfo = new FeatureInfo((FeatureInfo)newSource.getSourceContext().getUserData());
+											featureInfo.setVariable(abs.getAccessPath());
+										}
+										
+										abs.setSourceContext(new SourceContext(abs.getAccessPath(), (Stmt) exitStmt, featureInfo));
+				
+										res.add(abs);
+										
+	
+										// Aliases of implicitly tainted variables must be mapped back
+										// into the caller's context on return when we leave the last
+										// implicitly-called method
+										if ((abs.isImplicit()
+												&& triggerInaktiveTaintOrReverseFlow((Stmt) callSite, originalCallArg, newSource)
+												&& !callerD1sConditional) || aliasingStrategy.requiresAnalysisOnReturn())
+											for (Abstraction d1 : callerD1s)
+												computeAliasTaints(d1, (Stmt) callSite, originalCallArg, res,
+													interproceduralCFG().getMethodOf(callSite), abs);		
+									}
 								}
 							}
 						}
@@ -1303,7 +1448,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 											InstanceInvokeExpr iIExpr = (InstanceInvokeExpr) stmt.getInvokeExpr();
 											Abstraction abs = newSource.deriveNewAbstraction
 													(newSource.getAccessPath().copyWithNewValue(iIExpr.getBase()), stmt);
-											abs.setSourceContext(new SourceContext(iIExpr.getBase(), stmt, newSource.getSourceContext().getUserData()));
+											abs.setSourceContext(new SourceContext(abs.getAccessPath(), stmt, newSource.getSourceContext().getUserData()));
 											res.add(abs);
 											
 											// Aliases of implicitly tainted variables must be mapped back
@@ -1321,12 +1466,6 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							}
 							}
 						}
-						/*
-						for(Abstraction abs : res)
-						{
-							logger.info("Created Abstraction {}", abs);
-						}
-						 */
 						return res;
 					}
 
@@ -1392,20 +1531,22 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 									target = ((InstanceInvokeExpr) invExpr).getBase();
 								
 								Object userData = sourceInfo.getUserData();
-								FeatureInfo featureInfo = new FeatureInfo(new AccessPath(target, false), true, userData != null ? (int) userData : -1);
+								// We create a new taint. Value -1 indicates that this taint represents any valid config value
+								// FeatureIndex (third parameter) shows which config option this taint represents
+								FeatureInfo featureInfo = new FeatureInfo(new AccessPath(target, sourceInfo.getTaintSubFields()), -1, userData != null ? (int) userData : -1, null);
 								
 								final Abstraction abs = new Abstraction(target, sourceInfo.getTaintSubFields(), iStmt.getInvokeExpr(), 
 										iStmt, featureInfo, false, false);
 								res.add(abs);
 			
-								if(sourceSinkManager.trackPrecise(sourceInfo)) {
-									FeatureInfo featureInfo2 = new FeatureInfo(new AccessPath(target, false), false, userData != null ? (int) userData : -1);
-									
-									final Abstraction abs2 = new Abstraction(target, sourceInfo.getTaintSubFields(), iStmt.getInvokeExpr(), 
-											iStmt, featureInfo2, false, false);
-			
-									res.add(abs2);
-								}
+//								if(sourceSinkManager.trackPrecise(sourceInfo)) {
+//									FeatureInfo featureInfo2 = new FeatureInfo(new AccessPath(target, false), 0, userData != null ? (int) userData : -1);
+//									
+//									final Abstraction abs2 = new Abstraction(target, sourceInfo.getTaintSubFields(), iStmt.getInvokeExpr(), 
+//											iStmt, featureInfo2, false, false);
+//			
+//									res.add(abs2);
+//								}
 								
 								
 								// Compute the aliases
@@ -1424,15 +1565,33 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 								newSource = source;
 							
 							// Compute the taint wrapper taints
-							res.addAll(computeWrapperTaints(d1, iStmt, newSource));
+							if(newSource != zeroValue) { // precondition of computeWrapperTaints()
+								res.addAll(computeWrapperTaints(d1, iStmt, newSource));
+							}
 							
 							// Implicit flows: taint return value
-							if (call instanceof DefinitionStmt && (newSource.getTopPostdominator() != null
+							if (/*false &&*/ call instanceof DefinitionStmt && (newSource.getTopPostdominator() != null
 									|| newSource.getAccessPath().isEmpty())) {
 								Value leftVal = ((DefinitionStmt) call).getLeftOp();
 								Abstraction abs = newSource.deriveNewAbstraction(new AccessPath(leftVal, true),
 										(Stmt) call);
-								abs.setSourceContext(new SourceContext(leftVal, (DefinitionStmt) call, null));
+								
+								FeatureInfo originalFeatureInfo =  null;
+								if(source.getSourceContext() != null && source.getSourceContext().getUserData() != null) {
+									SourceContext sourceContext = source.getSourceContext();
+									originalFeatureInfo = (FeatureInfo)sourceContext.getUserData();
+								}
+								
+								FeatureInfo featureInfo = null;
+								if(originalFeatureInfo != null) {
+									featureInfo = new FeatureInfo(new AccessPath(leftVal, true), -2, -1, originalFeatureInfo.getBestIndexAvailable(), originalFeatureInfo.getIsAnti());
+									if(source.isImplicit())
+									{
+										// If source is implicit, variable name is useless.
+										featureInfo.setVariable(AccessPath.getEmptyAccessPath());
+									}
+								}								
+								abs.setSourceContext(new SourceContext(new AccessPath(leftVal, true), (DefinitionStmt) call, featureInfo));
 								res.add(abs);
 							}
 
@@ -1446,10 +1605,13 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							// If the callee does not read the given value, we also need to pass it on
 							// since we do not propagate it into the callee.
 							if (enableStaticFields && source.getAccessPath().isStaticFieldRef()) {
-								Set<SootField> fieldsWrittenByCallee = enableStaticFields ? interproceduralCFG().getWriteVariables
-										(interproceduralCFG().getMethodOf(call), iStmt) : null;
-								Set<SootField> fieldsReadByCallee = enableStaticFields ? interproceduralCFG().getReadVariables
-								        (interproceduralCFG().getMethodOf(call), iStmt) : null;
+//								Set<SootField> fieldsWrittenByCallee = enableStaticFields ? interproceduralCFG().getWriteVariables
+//										(interproceduralCFG().getMethodOf(call), iStmt) : null;
+//								Set<SootField> fieldsReadByCallee = enableStaticFields ? interproceduralCFG().getReadVariables
+//								        (interproceduralCFG().getMethodOf(call), iStmt) : null;
+								Set<SootField> fieldsWrittenByCallee = enableStaticFields ? fieldWriteCache.getUnchecked(iStmt)  : null;
+								Set<SootField> fieldsReadByCallee = enableStaticFields ? fieldReadCache.getUnchecked(iStmt) : null;
+	
 								if (fieldsReadByCallee != null && !isFieldReadByCallee(fieldsReadByCallee, source)
 										&& !isFieldReadByCallee(fieldsWrittenByCallee, source)) {
 									passOn = true;
@@ -1459,16 +1621,16 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 							// Implicit taints are always passed over conditionally called methods
 							passOn |= source.getTopPostdominator() != null || source.getAccessPath().isEmpty();
 							
-							if(passOn) {
-								if(source.getSourceContext() != null) {
-									Value value = source.getSourceContext().getValue();
-									if(value != null && call instanceof DefinitionStmt) {
-										if(((DefinitionStmt) call).getLeftOp() == value) {
-											passOn = false;
-										}
-									}
-								}
-							}
+//							if(passOn) {
+//								if(source.getSourceContext() != null) {
+//									Value value = source.getSourceContext().getValue();
+//									if(value != null && call instanceof DefinitionStmt) {
+//										if(((DefinitionStmt) call).getLeftOp() == value) {
+//											passOn = false;
+//										}
+//									}
+//								}
+//							}
 							
 							
 							if (passOn)
@@ -1565,7 +1727,7 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 						 * for the given call, otherwise false
 						 */
 						private boolean hasValidCallees(Unit call) {
-							Set<SootMethod> callees = interproceduralCFG().getCalleesOfCallAt(call);
+							Collection<SootMethod> callees = interproceduralCFG().getCalleesOfCallAt(call);
 							for (SootMethod callee : callees)
 								if (callee.isConcrete())
 										return true;
@@ -1577,6 +1739,79 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 				}
 				return Identity.v();
 			}
+			
+			
+			/**
+			 * Maps the given access path into the scope of the callee
+			 * @param callee The method that is being called
+			 * @param ie The invocation expression for the call
+			 * @param paramLocals The list of parameter locals in the callee
+			 * @param thisLocal The "this" local in the callee
+			 * @param ap The caller-side access path to map
+			 * @return The set of callee-side access paths corresponding to the
+			 * given caller-side access path
+			 */
+			private Set<AccessPath> mapAccessPathToCallee(final SootMethod callee, final InvokeExpr ie,
+					Value[] paramLocals, Local thisLocal, AccessPath ap) {
+				// We do not transfer empty access paths
+				if (ap.isEmpty())
+					return Collections.emptySet();
+				
+				// Android executor methods are handled specially. getSubSignature()
+				// is slow, so we try to avoid it whenever we can
+				final boolean isExecutorExecute = isExecutorExecute(ie, callee);
+				
+				Set<AccessPath> res = null;
+				
+				// check if whole object is tainted (happens with strings, for example:)
+				if (!isExecutorExecute
+						&& !ap.isStaticFieldRef()
+						&& !callee.isStatic()) {
+					assert ie instanceof InstanceInvokeExpr;
+					InstanceInvokeExpr vie = (InstanceInvokeExpr) ie;
+					// this might be enough because every call must happen with a local variable which is tainted itself:
+					if (aliasing.mayAlias(vie.getBase(), ap.getPlainValue()))
+						if (hasCompatibleTypesForCall(ap, callee.getDeclaringClass())) {
+							if (res == null) res = new HashSet<AccessPath>();
+							
+							// Get the "this" local if we don't have it yet
+							if (thisLocal == null)
+								thisLocal = callee.isStatic() ? null : callee.getActiveBody().getThisLocal();
+							
+							res.add(ap.copyWithNewValue(thisLocal));
+						}
+				}
+				// staticfieldRefs must be analyzed even if they are not part of the params:
+				else if (ap.isStaticFieldRef()) {
+					if (res == null) res = new HashSet<AccessPath>();
+					res.add(ap);
+				}
+				
+				//special treatment for clinit methods - no param mapping possible
+				if (isExecutorExecute) {
+					if (aliasing.mayAlias(ie.getArg(0), ap.getPlainValue())) {
+						if (res == null) res = new HashSet<AccessPath>();
+						res.add(ap.copyWithNewValue(callee.getActiveBody().getThisLocal()));
+					}
+				}
+				else if (callee.getParameterCount() > 0) {
+					assert callee.getParameterCount() == ie.getArgCount();
+					// check if param is tainted:
+					for (int i = 0; i < ie.getArgCount(); i++) {
+						if (aliasing.mayAlias(ie.getArg(i), ap.getPlainValue())) {
+							if (res == null) res = new HashSet<AccessPath>();							
+							
+							// Get the parameter locals if we don't have them yet
+							if (paramLocals == null)
+								paramLocals = callee.getActiveBody().getParameterLocals().toArray(
+										new Local[callee.getParameterCount()]);
+							
+							res.add(ap.copyWithNewValue(paramLocals[i]));
+						}
+					}
+				}
+				return res;
+			}			
 		};
 	}
 
@@ -1589,6 +1824,42 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 		if(aliasingStrategy == null) {
 			throw new IllegalArgumentException("aliasingStrategy must not be null.");
 		}
+		
+		fieldReadCache = CacheBuilder.newBuilder()
+				.maximumSize(50000)
+				.build(new CacheLoader<Stmt, Set<SootField>>() {
+
+					@Override
+					public Set<SootField> load(Stmt stmt) {
+						SootMethod method = interproceduralCFG().getMethodOf(stmt);
+						Set<SootField> fieldsReadByCallee = interproceduralCFG().getReadVariables(method, stmt);
+						
+						if(fieldsReadByCallee == null) {
+							return Collections.emptySet();
+						} else {
+							return fieldsReadByCallee;
+						}
+					}
+					
+				});
+		
+		fieldWriteCache = CacheBuilder.newBuilder()
+				.maximumSize(50000)
+				.build(new CacheLoader<Stmt, Set<SootField>>() {
+
+					@Override
+					public Set<SootField> load(Stmt stmt) {
+						SootMethod method = interproceduralCFG().getMethodOf(stmt);
+						Set<SootField> fieldsWrittenByCallee = interproceduralCFG().getWriteVariables(method, stmt);
+						
+						if(fieldsWrittenByCallee == null) {
+							return Collections.emptySet();
+						} else {
+							return fieldsWrittenByCallee;
+						}
+					}
+					
+				});
 		
 		this.aliasingStrategy = aliasingStrategy;
 		this.aliasing = new Aliasing(aliasingStrategy);
@@ -1604,6 +1875,10 @@ public class LoadTimeInfoflowProblem extends AbstractInfoflowProblem {
 	@Override
 	public boolean autoAddZero() {
 		return false;
+	}
+
+	public Aliasing getAliasing() {
+		return aliasing;
 	}
 
 

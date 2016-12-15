@@ -2,6 +2,7 @@
 ^android.
 ^java.
 ^org.apache.http.
+~org.joda.
 
 <java.util.Stack: java.lang.Object push(java.lang.Object)>
 
@@ -29,8 +30,8 @@
 <java.util.ArrayList: void <init>(java.util.Collection)>
 <java.util.LinkedList: void <init>(java.util.Collection)>
 
-<java.util.Set: boolean add(java.lang.Object)>
-<java.util.Set: boolean addAll(java.util.Collection)>
+~<java.util.Set: boolean add(java.lang.Object)>
+~<java.util.Set: boolean addAll(java.util.Collection)>
 -<java.util.Set: void clear()>
 
 <java.util.Collection: boolean add(java.lang.Object)>
@@ -240,6 +241,8 @@
 <java.util.Collections: java.util.List singletonList(java.lang.Object)>
 <java.util.Collections: java.util.Map singletonMap(java.lang.Object,java.lang.Object)>
 
+<java.util.Properties: java.lang.String getProperty(java.lang.String)>
+
 <android.content.ContentValues: void put(java.lang.String,java.lang.Integer)>
 
 <android.content.Intent: void <init>(android.content.Context,java.lang.Class)>
@@ -304,4 +307,8 @@
 # Exclude the ServerSocket stuff
 # ~<java.net.ServerSocket: java.net.Socket accept()>
 # ~<java.net.Socket: java.io.InputStream getInputStream()>
+
+~<android.support.v4.app.Fragment: java.lang.String toString()>
+~<android.support.v4.app.FragmentManagerImpl: void dump(java.lang.String,java.io.FileDescriptor,java.io.PrintWriter,java.lang.String[])>
+
 

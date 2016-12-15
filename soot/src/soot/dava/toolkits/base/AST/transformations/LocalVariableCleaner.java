@@ -145,7 +145,7 @@ public class LocalVariableCleaner extends DepthFirstAdapter {
 					System.out.println("Param Map is: "+body.get_ParamMap());
 					System.out.println("Locals are:"+body.getLocals());
 				}			
-				Chain localChain = body.getLocals();
+				Collection<Local> localChain = body.getLocals();
 				if(removeLocal != null && localChain != null)
 					localChain.remove(removeLocal);
 			}
@@ -221,12 +221,9 @@ public class LocalVariableCleaner extends DepthFirstAdapter {
 		}
 		ASTStatementSequenceNode parentNode = (ASTStatementSequenceNode) parent;
 
-		ArrayList<Object> newSequence = new ArrayList<Object>();
-		List<Object> stmts = parentNode.getStatements();
-		int size = stmts.size();
-		Iterator<Object> it = stmts.iterator();
-		while (it.hasNext()) {
-			AugmentedStmt as = (AugmentedStmt) it.next();
+		ArrayList<AugmentedStmt> newSequence = new ArrayList<AugmentedStmt>();
+		int size = parentNode.getStatements().size();
+		for (AugmentedStmt as : parentNode.getStatements()) {
 			Stmt s = as.get_Stmt();
 			if (s.toString().compareTo(stmt.toString()) != 0) {
 				//this is not the stmt to be removed

@@ -4,9 +4,11 @@
 
 # Home page
 GET     /                           controllers.Application.index()
+GET     /project/*id                controllers.Application.project(id)
 GET     /fileTree                   controllers.Application.fileTree(project: String)
 GET     /overview                   controllers.Application.overview()
 POST    /loadResult                 controllers.Application.loadResult()
+GET     /detailedLineInfo   		controllers.Application.detailedLineInfo(app: String, className: String, lineNumber: Int)
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)

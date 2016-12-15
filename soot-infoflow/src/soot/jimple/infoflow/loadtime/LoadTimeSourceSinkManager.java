@@ -11,6 +11,7 @@
 package soot.jimple.infoflow.loadtime;
 
 import heros.InterproceduralCFG;
+import heros.solver.IDESolver;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -22,13 +23,19 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
+import soot.Scene;
+import soot.SootField;
 import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
 import soot.jimple.AssignStmt;
+import soot.jimple.Expr;
 import soot.jimple.FieldRef;
 import soot.jimple.InstanceFieldRef;
 import soot.jimple.InvokeExpr;
@@ -43,16 +50,16 @@ import soot.jimple.infoflow.source.SourceInfo;
  */
 public class LoadTimeSourceSinkManager extends MethodBasedSourceSinkManager {
 
-	private List<String> sources;
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private Map<Pattern, LoadTimeConfig> configPatterns;
 	private Map<String, LoadTimeConfig> configs;
 	private Set<Integer> preciseFeatures = new HashSet<Integer>();
 	
 	private Config featureConfig;
+	
+	private LoadingCache<InvokeExpr, String> methodSignatureCache;
 
-	public LoadTimeSourceSinkManager(List<String> sources, String configName) {
-		this.sources = sources;
+	public LoadTimeSourceSinkManager(String configName) {
 		
 		// Load sources from config
 		Config conf = ConfigFactory.load().getConfig(configName);
@@ -72,6 +79,7 @@ public class LoadTimeSourceSinkManager extends MethodBasedSourceSinkManager {
 			}
 			configPatterns.put(Pattern.compile(customEscaping(fieldRef.getString("name"))), loadTimeConfig);
 		}
+		
 		for(Config method : methods)
 		{
 			LoadTimeConfig loadTimeConfig = new LoadTimeConfig(method.getString("name"), method.getConfig("feature").getInt("index"));
@@ -81,6 +89,19 @@ public class LoadTimeSourceSinkManager extends MethodBasedSourceSinkManager {
 			}
 			configPatterns.put(Pattern.compile(customEscaping(method.getString("name"))), loadTimeConfig);
 		}
+		
+		methodSignatureCache = CacheBuilder.newBuilder()
+				.build(new CacheLoader<InvokeExpr, String>() {
+
+					@Override
+					public String load(InvokeExpr expr) {
+						synchronized (Scene.v()) {
+							return expr.getMethod().getSubSignature();
+						}
+
+					}
+					
+				});
 	}
 	
 	// Escape regex chars .,(,)
@@ -99,21 +120,16 @@ public class LoadTimeSourceSinkManager extends MethodBasedSourceSinkManager {
 		return featureConfig;
 	}
 	
+
+	
 	@Override
 	public SourceInfo getSourceInfo(Stmt sCallSite, InterproceduralCFG<Unit, SootMethod> cfg) {
-		//boolean isSource = sources.contains(sCallSite.toString());
-		
 		SourceInfo sourceInfo = null;
 		
 		if(sCallSite.containsInvokeExpr()) {
 			InvokeExpr expr = (InvokeExpr)sCallSite.getInvokeExpr();
 			
-			String methodText = null;
-			
-			synchronized (sources) {
-				// Possible error if getMethod() is invoked in parallel?
-				methodText = expr.getMethod().getSubSignature();
-			}
+			String methodText = methodSignatureCache.getUnchecked(expr);
 			
 			StringBuilder sb = new StringBuilder();
 			sb.append("(");
@@ -131,7 +147,7 @@ public class LoadTimeSourceSinkManager extends MethodBasedSourceSinkManager {
 			sb.append(")");
 			
 			String methodWithParameter = methodText + sb.toString();
-			
+					
 			for(Pattern config : configPatterns.keySet()) {
 				if (config.matcher(methodText).matches()) {
 					sourceInfo = new SourceInfo(true, configPatterns.get(config).getFeature());
@@ -159,10 +175,10 @@ public class LoadTimeSourceSinkManager extends MethodBasedSourceSinkManager {
 					} else {
 						fieldRef = rightOp.toString();
 					}
-
-//					if(configs.containsKey(fieldRef)) {
-//						sourceInfo = new SourceInfo(true, configs.get(customEscaping(fieldRef)).getFeature());
-//					}
+					
+					if(configs.containsKey(fieldRef)) {
+						sourceInfo = new SourceInfo(true, configs.get(customEscaping(fieldRef)).getFeature());
+					}
 					for(Pattern config : configPatterns.keySet()) {
 						if (config.matcher(fieldRef).matches()) {
 							sourceInfo = new SourceInfo(true, configPatterns.get(config).getFeature());

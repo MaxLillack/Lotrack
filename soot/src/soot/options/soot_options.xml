@@ -99,8 +99,114 @@ as <tt>HelloWorld</tt>, <tt>UI</tt>, and <tt>textUI</tt>. The set
 of library classes includes the referenced classes from other
 packages in the Java runtime.</p>
 </intro>
+<phaseintro>
+    <P>
+Soot supports the powerful--but initially confusing--notion of
+``phase options''.  This document aims to clear up the confusion so
+you can exploit the power of phase options.
+</P>
+
+<P>
+Soot's execution is divided into a number of phases.  For example,
+<TT>JimpleBody</TT>s are built by a phase called <TT>jb</TT>, which is
+itself comprised of subphases, such as the aggregation of local
+variables (<TT>jb.a</TT>).
+</P>
+
+<P>
+Phase options provide a way for you to
+change the behaviour of a phase from the Soot command-line.  They take
+the form <TT>-p </TT><EM>phase</EM>.<EM>name</EM> 
+<EM>option</EM>:<EM>value</EM>.  For instance,
+to instruct Soot to use original names in Jimple, we would invoke Soot
+like this:
+<PRE>
+java soot.Main foo -p jb use-original-names:true
+</PRE>
+Multiple option-value pairs may be specified in a single <TT>-p</TT> option
+separated by commas. For example,
+<PRE>
+java soot.Main foo -p cg.spark verbose:true,on-fly-cg:true
+</PRE>
+</P>
+
+<P>
+There are five types of phase options:
+</P>
+
+<OL>
+<LI>Boolean options take the values
+``true'' and ``false''; if you specify the name of a boolean option without adding a value for it, ``true'' is assumed.
+</LI>
+<LI>Multi-valued options take a value from a set of allowed values
+specific to that option.
+</LI>
+<LI>Integer options
+take an integer value. 
+</LI>
+<LI>Floating point options take a 
+floating point number as their value. 
+</LI>
+<LI>String options take an arbitrary
+string as their value.
+</LI>
+</OL>
+
+<P>
+Each option has a default value which is used if the option is not
+specified on the command line.
+</P>
+
+<P>
+All phases and subphases accept the option ``<TT>enabled</TT>'', which
+must be ``<TT>true</TT>'' for the phase or subphase to execute. To save
+you some typing, the pseudo-options ``<TT>on</TT>'' and ``<TT>off</TT>''
+are equivalent to ``<TT>enabled:true</TT>'' and ``<TT>enabled:false</TT>'',
+respectively. In addition, specifying any options for a phase
+automatically enables that phase.
+</P>
+
+<H4>Adding your own subphases</H4>
+
+<P>
+Within Soot, each phase is implemented by a <TT>Pack</TT>. The <TT>Pack</TT>
+is a collection of transformers, each corresponding to a subphase of
+the phase implemented by the <TT>Pack</TT>. When the <TT>Pack</TT> is
+called, it executes each of its transformers in order.
+</P>
+
+<P>
+Soot transformers are usually instances of classes that extend 
+<TT>BodyTransformer</TT> or <TT>SceneTransformer</TT>.  In either case, the
+transformer class must override the <TT>internalTransform</TT> method,
+providing an implementation which carries out some transformation on
+the code being analyzed.
+</P>
+
+<P>
+To add a transformer to some <TT>Pack</TT> without modifying Soot itself,
+create your own class which changes the contents of the <TT>Pack</TT>s to
+meet your requirements and then calls <TT>soot.Main</TT>.
+</P>
+
+<P>
+The remainder of this document describes the transformations belonging
+to Soot's various <TT>Pack</TT>s and their corresponding phase
+options.
+</P>
+</phaseintro>
 	<section>
 		<name>General Options</name>
+		<boolopt>
+		<name>Coffi Frontend</name>
+		<alias>coffi</alias>
+		<short_desc>Use the good old Coffi front end for parsing Java bytecode (instead of using ASM).</short_desc>		
+		</boolopt>
+		<boolopt>
+		<name>ASM Backend</name>
+		<alias>asm-backend</alias>
+		<short_desc>Use the ASM back end for generating Java bytecode (instead of using Jasmin).</short_desc>		
+		</boolopt>
 		<boolopt>
 			<name>Help</name>
 			<alias>h</alias>
@@ -433,6 +539,18 @@ the Soot classpath. Fall back to <tt>.class</tt>, <tt>.java</tt> or <tt>.jimple<
 files only when unable to find a class in <tt>.apk</tt> files.
 </long_desc>
 			</value>
+			<value>
+				<name>APK File</name>
+				<alias>apk-class-jimple</alias>
+				<alias>apk-c-j</alias>
+				<short_desc>Favour APK files as Soot source, disregard Java files</short_desc>
+				<long_desc>
+Try to resolve classes first from <tt>.apk</tt> (Android Package) files found in
+the Soot classpath. Fall back to <tt>.class</tt>, or <tt>.jimple</tt>
+files only when unable to find a class in <tt>.apk</tt> files. Never load a <tt>.java</tt>
+file.
+</long_desc>
+			</value>
 		</multiopt>
 		<boolopt>
 			<name>Force complete resolver</name>
@@ -631,10 +749,18 @@ version of the Soot's Jimple internal representation.
 			<alias>dex</alias>
 			<short_desc>Produce Dalvik Virtual Machine files</short_desc>
 			<long_desc>Produce Dalvik Virtual Machine files. If input was an Android
-			Package (APK), a new APK is generated with it's classes.dex replaced. If
-			no input APK is found, only a classes.dex is generated.</long_desc>
+Package (APK), a new APK is generated with it's classes.dex replaced. If
+no input APK is found, only a classes.dex is generated.</long_desc>
 			</value>
-				<value>
+			<value>
+			<name>Dalvik Executable File</name>
+			<alias>force-dex</alias>
+			<short_desc>Produce Dalvik DEX files</short_desc>
+			<long_desc>Produce Dalvik Virtual Machine files. This option always creates
+a stand-alone DEX file, even if the input was read from an Android Package (APK).
+</long_desc>
+			</value>
+			<value>
 				<name>No Output File</name>
 				<alias>n</alias>
 				<alias>none</alias>
@@ -679,6 +805,110 @@ Produce <tt>.java</tt> files generated by the Dava decompiler.
 				<short_desc>Produce <tt>.java</tt> files with Jimple templates.</short_desc>
 				<long_desc>
 Produce <tt>.java</tt> files with Jimple templates.
+</long_desc>
+			</value>
+			<value>
+				<name>ASM File</name>
+				<alias>a</alias>
+				<alias>asm</alias>
+				<short_desc>Produce <tt>.asm</tt> files as textual bytecode representation generated with the ASM back end.</short_desc>
+				<long_desc>
+Produce <tt>.asm</tt> files as textual bytecode representation generated with the ASM back end.
+</long_desc>
+			</value>
+		</multiopt>
+		<multiopt>
+			<name>Java version</name>
+			<alias>java-version</alias>
+			<default>default</default>
+			<set_arg_label>version</set_arg_label>
+			<short_desc>Force Java version of bytecode generated by Soot.</short_desc>
+			<long_desc>
+<p>
+Force Java version of bytecode generated by Soot.</p>
+<p>
+This option can only be set on <tt>output-format class</tt> 
+and <tt>asm-backend</tt> set, or on <tt>output-format asm</tt>
+</p>
+</long_desc>
+			<value>
+				<name>Default behavior</name>
+				<alias>default</alias>
+				<short_desc>Let Soot determine Java version of generated bytecode.</short_desc>
+                <long_desc>
+Let Soot determine Java version of generated bytecode.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.1</name>
+				<alias>1.1</alias>
+				<alias>1</alias>
+				<short_desc>Force Java 1.1 as output version.</short_desc>
+                <long_desc>
+Force Java 1.1 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.2</name>
+				<alias>1.2</alias>
+				<alias>2</alias>
+				<short_desc>Force Java 1.2 as output version.</short_desc>
+                <long_desc>
+Force Java 1.2 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.3</name>
+				<alias>1.3</alias>
+				<alias>3</alias>
+				<short_desc>Force Java 1.3 as output version.</short_desc>
+                <long_desc>
+Force Java 1.3 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.4</name>
+				<alias>1.4</alias>
+				<alias>4</alias>
+				<short_desc>Force Java 1.4 as output version.</short_desc>
+                <long_desc>
+Force Java 1.4 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.5</name>
+				<alias>1.5</alias>
+				<alias>5</alias>
+				<short_desc>Force Java 1.5 as output version.</short_desc>
+                <long_desc>
+Force Java 1.5 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.6</name>
+				<alias>1.6</alias>
+				<alias>6</alias>
+				<short_desc>Force Java 1.6 as output version.</short_desc>
+                <long_desc>
+Force Java 1.6 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.7</name>
+				<alias>1.7</alias>
+				<alias>7</alias>
+				<short_desc>Force Java 1.7 as output version.</short_desc>
+                <long_desc>
+Force Java 1.7 as output version.
+</long_desc>
+			</value>
+			<value>
+				<name>Java 1.8</name>
+				<alias>1.8</alias>
+				<alias>8</alias>
+				<short_desc>Force Java 1.8 as output version.</short_desc>
+                <long_desc>
+Force Java 1.8 as output version.
 </long_desc>
 			</value>
 		</multiopt>
@@ -802,6 +1032,16 @@ dumps of exceptional control flow graphs.
 This option causes Soot to compress output files of intermediate representations
 with GZip. It does not apply to class files output by Soot.
 </long_desc>
+	</boolopt>
+	<boolopt>
+	    <name>Force Overwrite Output Files</name>
+	    <alias>force-overwrite</alias>
+	    <default>false</default>
+	  <short_desc>Force Overwrite Output Files</short_desc>
+	  <long_desc>
+	      If this option is set to true, the output files will be overwritten
+	      if they already exist and no further warning will be issued.
+		</long_desc>
 	</boolopt>
 	</section>
 	<section>
@@ -1195,7 +1435,7 @@ traps whose catch blocks are empty.
 					<boolopt>
 						<name>Remove unreachable traps</name>
 						<alias>remove-unreachable-traps</alias>
-                                                <default>false</default>
+                                                <default>true</default>
 	  					<long_desc>
 Remove exception table entries when none of the protected instructions can
 throw the exception being caught.
@@ -1616,6 +1856,70 @@ When this option is set to false, any calls to Class.newInstance()
 are assumed not to call the constructor of the created object.
 </long_desc>
                                 </boolopt>
+                               	<multiopt>
+									<name>Library mode</name>
+									<alias>library</alias>
+									<short_desc>
+										Specifies whether the target classes should be treated as an application or a library.
+									</short_desc>
+									<long_desc>
+										Specifies whether the target classes should be treated as an application or a library.
+										If library mode is disabled (default), the call graph construction assumes that the target is an application and 
+										starts the construction from the specified entry points (main method by default). 
+										Under the assumption that the target is a library, possible call edges might be missing in the call graph.
+										The two different library modes add theses missing calls to the call graph and differ only in the view of the class hierachy 
+										(hierachy of target library or possible extended hierachy).
+										If simulate-natives is also set, the results of native methods are also set to any  sub type of the declared return type.
+									</long_desc>
+									<value>
+										<name>Disabled</name>
+										<alias>disabled</alias>
+										<default/>
+										<short_desc>
+											Call(and pointer assignment) graph construction treat the target classes as application starting from the entry points.
+										</short_desc>
+										<long_desc>
+											Call(and pointer assignment) graph construction treat the target classes as application starting from the entry points.
+										</long_desc>
+									</value>
+									<value>
+										<name>Any Subtype</name>
+										<alias>any-subtype</alias>
+										<short_desc>
+											In this mode types of any accessible field, method parameter, this local, or caugth exception is set to any possible sub type 
+											according to the class hierarchy of the target library.
+										</short_desc>
+										<long_desc>
+											On library analysis it has to be assumed, that a possible client can call any method or access any field, 
+											to which he has the access rights (default public/protected but can be set with soot.Scene#setClientAccessibilityOracle).
+											In this mode types of any accessible field, method parameter, this local, or caugth exception is set to any possible sub type 
+											according to the class hierachy of the target library.
+											If simulate-natives is also set, the results of native methods are also set to any sub type of the declared return type.
+										</long_desc>
+									</value>
+									<value>
+										<name>By Signature resolution</name>
+										<alias>signature-resolution</alias>
+										<short_desc>
+											In this mode types of any accessible field, method parameter, this local, or caugth exception is set to any possible sub type 
+											according to a possible extended class hierarchy of the target library.
+										</short_desc>
+										<long_desc>
+											On library analysis it has to be assumed, that a possible client can call any method or access any field, 
+											to which he has the access rights (default public/protected but can be set with soot.Scene#setClientAccessibilityOracle).
+											In this mode types of any accessible field, method parameter, this local, or caugth exception is set to any possible sub type 
+											according to a possible extended class hierarchy of the target library. Whenever any sub type of a specific type is considered as 
+											receiver for a method to call and the base type is an interface, calls to existing methods with matching signature (possible implementation 
+											of method to call) are also added. As Javas' subtyping allows contra-variance for return types and co-variance for parameters when overriding 
+											a method, these cases are also considered here.
+											
+											Example: Classes A, B (B sub type of A), interface I with method public A foo(B b); and a class C with method public B foo(A a) { ... }.
+											The extended class hierachy will contain C as possible implementation of I.
+											
+											If simulate-natives is also set, the results of native methods are also set to any possible sub type of the declared return type.
+										</long_desc>
+									</value>
+								</multiopt>
                                 <boolopt>
                                         <name>Verbose</name>
                                         <alias>verbose</alias>
@@ -1699,6 +2003,13 @@ the program throws an Error instead.
                                                 <default>false</default>
                                                 <short_desc>Print statistics about the resulting call graph</short_desc>
                                                 <long_desc>Setting this option to true causes Soot to print out statistics about the call graph computed by this phase, such as the number of methods determined to be reachable.</long_desc>
+					</boolopt>
+					<boolopt>
+						<name>AppOnly</name>
+						<alias>apponly</alias>
+                                                <default>false</default>
+                                                <short_desc>Consider only application classes</short_desc>
+                                                <long_desc>Setting this option to true causes Soot to only consider application classes when building the callgraph. The resulting callgraph will be inherently unsound. Still, this option can make sense if performance optimization and memory reduction are your primary goal.</long_desc>
 					</boolopt>
 				</sub_phase>
 				<sub_phase>
@@ -2436,7 +2747,7 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						  <set_arg_label>name</set_arg_label>
 						  <short_desc>Filename for detailed execution log</short_desc>
 						  <long_desc>
-						    If you want to persist the detailed execution information for future analysis, please provide a file name.
+						    If you want to save the geomPTA analysis information for future analysis, please provide a file name.
 						  </long_desc>
 						</stropt>
 						
@@ -2447,7 +2758,7 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						  <set_arg_label>path</set_arg_label>
 						  <short_desc>Filename for verification file</short_desc>
 						  <long_desc>
-						    If you want to compare the precision of the points-to results with other solvers (e.g. Paddle), you can use the 'verify-file' to specify the list of methods (soot method signature format) that are reachable by that solver. Then, in the internal evaluations (see the switch geom-eval), we only consider the methods that are present to both solvers.
+						    If you want to compare the precision of the points-to results with other solvers (e.g. Paddle), you can use the 'verify-file' to specify the list of methods (soot method signature format) that are reachable by that solver. During the internal evaluations (see the option geom-eval), we only consider the methods that are common to both solvers.
 						  </long_desc>
 						</stropt>
 						
@@ -2457,7 +2768,7 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						  <default>0</default>
 						  <short_desc>Precision evaluation methodologies</short_desc>
 						  <long_desc>
-						    We internally provide some precision evaluation methodologies, and classify the evaluation strength into three levels. If level is 0, we do nothing. If level is 1, we report the basic information about the points-to result. If level is 2, we perform the virtual callsite resolution, static cast safety and all alias pairs evaluations.
+						    We internally provide some precision evaluation methodologies and classify the evaluation strength into three levels. If level is 0, we do nothing. If level is 1, we report the statistical information about the points-to result. If level is 2, we perform the virtual callsite resolution, static cast safety and all-pairs alias evaluations.
 						  </long_desc>
 						</intopt>
 						
@@ -2467,7 +2778,7 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						  <default>false</default>
 						  <short_desc>Transform to context-insensitive result</short_desc>
 						  <long_desc>
-						    If your work only concern the context insensitive points-to information, you can use this option to transform the context sensitive result to insensitive result. Or, sometimes your code wants to directly access to the points-to vector other than using the standard querying interface, you can use this option to guarantee the correct behavior (because we clear the SPARK points-to result when running the geom solver). After the transformation, the context sensitive points-to result is cleared in order to save memory space for your other jobs.
+						    If you stick to working with SPARK, you can use this option to transform the context sensitive result to insensitive result. After the transformation, the context sensitive points-to quries cannot be answered.
 						  </long_desc>
 						</boolopt>		
 						
@@ -2477,7 +2788,7 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						  <default>40</default>
 						  <short_desc>Fractional parameter for precision/performance trade-off</short_desc>
 						  <long_desc>
-						    This option specifies the fractional parameter, which is used to manually tune the precision and performance trade-off. The smaller the value, the better the performance but the worse the precision.
+						    This option specifies the fractional parameter, which manually balances the precision and the performance. Smaller value means better performance and worse precision.
 						  </long_desc>
 						</intopt>	
 						
@@ -2487,7 +2798,7 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						  <default>true</default>
 						  <short_desc>Enable blocking strategy for recursive calls</short_desc>
 						  <long_desc>
-						    When this option is on, we perform the blocking strategy to the recursive calls. This strategy significantly improves the precision. The details are presented in our paper.
+						    Blocking strategy is a 1CFA model for recursive calls. This model significantly improves the precision.
 						  </long_desc>
 						</boolopt>		
 						
@@ -2500,6 +2811,16 @@ Each iteration traverses at most ( traverse / passes ) nodes.
 						    We can run multiple times of the geometric analysis to continuously improve the analysis precision.
 						  </long_desc>
 						</intopt>
+
+						<boolopt>
+						  <name>Pointers processed by geomPTA</name>
+						  <alias>geom-app-only</alias>
+						  <default>true</default>
+						  <short_desc>Processing pointers that impact pointers in application code only</short_desc>
+						  <long_desc>
+						    When this option is true, geomPTA only processes the pointers in library functions ( java.*, sun.*, and etc.) that potentially impact the points-to information of pointers in application code, the pointers in application code, and the base pointers at virtual callsites.
+						  </long_desc>
+						</boolopt>
 						
 -->																					
 					</section>
@@ -3557,6 +3878,35 @@ Print a table of information about the program's transactions.
 Print debugging info, including every statement visited.
 </long_desc>
 					</boolopt>
+				</sub_phase>
+				<sub_phase>
+					<name>Rename duplicated classes</name>
+					<class>RenameDuplicatedClasses</class>
+					<alias>wjtp.rdc</alias>
+					<short_desc>Rename duplicated classes when the file system is not case sensitive</short_desc>
+<long_desc>
+Rename duplicated classes when the file system is not case sensitive.
+If the file system is case sensitive, this phase does nothing.
+</long_desc>
+					<boolopt>
+						<name>Enabled</name>
+						<alias>enabled</alias>
+						<default>false</default>
+						<short_desc/>
+						<long_desc/>
+					</boolopt>
+					<stropt>
+						<name>FixedClassNames</name>
+						<alias>fcn</alias>
+						<alias>fixed-class-names</alias>
+						<set_arg_label>nameList</set_arg_label>
+						<short_desc>Set <use_arg_label/> for the fixed class names.</short_desc>
+						<long_desc>
+							Use this parameter to set some class names unchangable even they are duplicated.
+							The fixed class name list cannot contain duplicated class names.
+							Using '-' to split multiple class names (e.g., fcn:a.b.c-a.b.d).
+						</long_desc>
+					</stropt>
 				</sub_phase>
 			</phase>
 			<phase>
@@ -5245,7 +5595,7 @@ Grimp option has been specified.
 				<long_desc>
 The Baf Body Creation phase creates a
 <tt>BafBody</tt> from each source method. It is
-run if the output format is <tt>baf</tt> or <tt>b</tt>, or
+run if the output format is <tt>baf</tt> or <tt>b</tt> or <tt>asm</tt> or <tt>a</tt>, or
 if class files are being output and the Via Grimp option
 has not been specified.
 </long_desc>
@@ -5411,7 +5761,7 @@ the Local Splitter.
 The Baf Optimization pack performs optimizations on
 <tt>BafBody</tt>s (currently there are no optimizations performed
 specifically on <tt>BafBody</tt>s, and the pack is empty). It is
-run only if the output format is <tt>baf</tt> or <tt>b</tt>, or
+run only if the output format is <tt>baf</tt> or <tt>b</tt> or <tt>asm</tt> or <tt>a</tt>, or
 if class files are being output and the Via Grimp option
 has not been specified.
 </long_desc>
@@ -5739,6 +6089,65 @@ to the surrounding program.
 </long_desc>
 							</value>
 						</multiopt>
+						<multiopt>
+							<name>Local Initialization ThrowAnalysis</name>
+							<alias>check-init-ta</alias>
+							<alias>check-init-throw-analysis</alias>
+							<long_desc>
+This option specifies which throw analysis to use during local initialization 
+checking inside soot.Body.
+        </long_desc>
+							<value>
+								<name>Select Automatically</name>
+								<alias>auto</alias>
+								<default/>
+								<short_desc>Automatically select a throw analysis</short_desc>
+								<long_desc>
+Selects the throw analysis to use for local initialization checking based on 
+information from other options. In particular, it will use 'dalvik' when 
+it detects it is analyzing an Android application (e.g. when --android-jars or 
+--force-android-jar are set) and 'pedantic' otherwise. This is the default.
+</long_desc>
+							</value>
+							<value>
+								<name>Pedantic</name>
+								<alias>pedantic</alias>
+								<short_desc>Pedantically conservative throw analysis</short_desc>
+								<long_desc>
+Says that any instruction may throw any
+<code>Throwable</code> whatsoever. Strictly speaking this is
+correct, since the Java libraries include the
+<code>Thread.stop(Throwable)</code>
+method, which allows other threads to cause arbitrary exceptions
+to occur at arbitrary points in the execution of a victim thread.
+</long_desc>
+							</value>
+							<value>
+								<name>Unit</name>
+								<alias>unit</alias>
+								<short_desc>Unit Throw Analysis</short_desc>															
+								<long_desc>
+Says that each statement in the intermediate representation
+may throw those exception types associated with the corresponding
+Java bytecode instructions in the JVM Specification.  The
+analysis deals with each statement in isolation, without regard
+to the surrounding program.
+</long_desc>
+							</value>
+							<value>
+								<name>Dalvik</name>
+								<alias>dalvik</alias>
+								<short_desc>Dalvik Throw Analysis</short_desc>								
+								<long_desc>
+Says that each statement in the intermediate representation
+may throw those exception types associated with the corresponding
+Java bytecode instructions in the Dalvik Specification.  The
+analysis deals with each statement in isolation, without regard
+to the surrounding program. This is the equivalent of Unit above, but targeting 
+the Dalvik VM semantics as opposed to those of the JVM.
+</long_desc>
+							</value>
+						</multiopt>
 		<boolopt>
 			<name>Omit Excepting Unit Edges</name>
 			<alias>omit-excepting-unit-edges</alias>
@@ -6041,6 +6450,15 @@ Report the time required to perform some of Soot's transformations.
 			<long_desc>
 Attempt to subtract time spent in garbage collection from
 the reports of times required for transformations.
+</long_desc>
+		</boolopt>
+		
+		<boolopt>
+			<name>No body releasing after writeout</name>
+			<alias>no-writeout-body-releasing</alias>
+			<short_desc>Disables the release of method bodies after writeout. This flag is used internally.</short_desc>
+			<long_desc>
+By default soot releases the method bodies of all reachable classes after the final writeout. This option deactivates this behaviour. This flag should not affect end users at all.
 </long_desc>
 		</boolopt>
 	</section>

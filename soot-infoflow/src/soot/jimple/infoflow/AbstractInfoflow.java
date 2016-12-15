@@ -22,7 +22,7 @@ public abstract class AbstractInfoflow implements IInfoflow {
 	protected boolean stopAfterFirstFlow = false;
 	protected boolean enableImplicitFlows = false;
 	protected boolean enableStaticFields = true;
-	protected boolean enableExceptions = true;
+	protected boolean enableExceptions = false;
 	protected boolean computeResultPaths = true;
 	protected boolean flowSensitiveAliasing = true;
 

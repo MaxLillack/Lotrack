@@ -23,214 +23,192 @@
  * contributors.  (Soot is distributed at http://www.sable.mcgill.ca/soot)
  */
 
-
 package soot.util;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Set;
 
-import soot.SootClass;
+public class IterableSet<T> extends HashChain<T> implements Set<T> {
+	public IterableSet(Collection<T> c) {
+		super();
+		addAll(c);
+	}
 
-public class IterableSet extends HashChain implements Set
-{
-    public IterableSet( Collection<SootClass> c)
-    {
-	super();
-	addAll( c);
-    }
+	public IterableSet() {
+		super();
+	}
 
-    public IterableSet()
-    {
-	super();
-    }
+	public boolean add(T o) {
+		if (o == null)
+			throw new IllegalArgumentException(
+					"Cannot add \"null\" to an IterableSet.");
 
-    public boolean add( Object o)
-    {
-	if (o == null)
-	    throw new IllegalArgumentException( "Cannot add \"null\" to an IterableSet.");
+		if (contains(o))
+			return false;
 
-	if (contains( o))
-	    return false;
+		return super.add(o);
+	}
 
-	return super.add( o);
-    }
+	public boolean remove(Object o) {
+		if ((o == null) || (contains(o) == false))
+			return false;
 
-    public boolean remove( Object o)
-    {
-	if ((o == null) || (contains( o) == false))
-	    return false;
+		return super.remove(o);
+	}
 
-	return super.remove( o);
-    }
-    
-    public boolean equals( Object o)
-    {
-	if (o == null)
-	    return false;
+	public boolean equals(Object o) {
+		if (o == null)
+			return false;
 
-	if (this == o)
-	    return true;
+		if (this == o)
+			return true;
 
-	if ((o instanceof IterableSet) == false)
-	    return false;
+		if ((o instanceof IterableSet) == false)
+			return false;
 
-	IterableSet other = (IterableSet) o;
+		@SuppressWarnings("unchecked")
+		IterableSet<T> other = (IterableSet<T>) o;
 
-	if (size() != other.size())
-	    return false;
-	
-	Iterator it = iterator();
-	while (it.hasNext()) 
-	    if (other.contains( it.next()) == false)
+		if (size() != other.size())
+			return false;
+
+		for (T t : this)
+			if (!other.contains(t))
+				return false;
+
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int code = 23 * size();
+		for (T t : this) {
+			// use addition here to have hash code independent of order
+			code += t.hashCode();
+		}
+		return code;
+	}
+
+	public Object clone() {
+		IterableSet<T> s = new IterableSet<T>();
+		s.addAll(this);
+		return s;
+	}
+
+	public boolean isSubsetOf(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set compare an IterableSet with \"null\".");
+
+		if (size() > other.size())
+			return false;
+
+		for (T t : this)
+			if (!other.contains(t))
+				return false;
+
+		return true;
+	}
+
+	public boolean isSupersetOf(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set compare an IterableSet with \"null\".");
+
+		if (size() < other.size())
+			return false;
+
+		for (T t : other)
+			if (!contains(t))
+				return false;
+
+		return true;
+	}
+
+	public boolean isStrictSubsetOf(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set compare an IterableSet with \"null\".");
+
+		if (size() >= other.size())
+			return false;
+
+		return isSubsetOf(other);
+	}
+
+	public boolean isStrictSupersetOf(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set compare an IterableSet with \"null\".");
+
+		if (size() <= other.size())
+			return false;
+
+		return isSupersetOf(other);
+	}
+
+	public boolean intersects(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set intersect an IterableSet with \"null\".");
+
+		if (other.size() < size()) {
+			for (T t : other)
+				if (contains(t))
+					return true;
+		} else {
+			for (T t : this)
+				if (other.contains(t))
+					return true;
+		}
+
 		return false;
+	}
+
+	public IterableSet<T> intersection(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set intersect an IterableSet with \"null\".");
+
+		IterableSet<T> c = new IterableSet<T>();
+
+		if (other.size() < size()) {
+			for (T t : other)
+				if (contains(t))
+					c.add(t);
+		} else {
+			for (T t : this)
+				if (other.contains(t))
+					c.add(t);
+		}
+		return c;
+	}
+
+	public IterableSet<T> union(IterableSet<T> other) {
+		if (other == null)
+			throw new IllegalArgumentException(
+					"Cannot set union an IterableSet with \"null\".");
+
+		IterableSet<T> c = new IterableSet<T>();
+
+		c.addAll(this);
+		c.addAll(other);
+
+		return c;
+	}
+
+	public String toString() {
+		StringBuffer b = new StringBuffer();
+
+		for (T t : this) {
+			b.append(t.toString());
+			b.append("\n");
+		}
+
+		return b.toString();
+	}
 	
-	return true;
-    }
-    
-    @Override
-    public int hashCode() {
-    	int code = 23;
-    	Iterator it = iterator();
-    	while (it.hasNext()) {
-    		//use addition here to have hash code independent of order
-    		code += it.next().hashCode();
-    	}
-    	return code;
-    }
-    
-    public Object clone()
-    {
-	IterableSet s = new IterableSet();
-	s.addAll( this);
-	return s;
-    }    
-
-    public boolean isSubsetOf( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set compare an IterableSet with \"null\".");
-
-	if (size() > other.size())
-	    return false;
-
-	Iterator it = iterator();
-	while (it.hasNext())
-	    if (other.contains( it.next()) == false)
-		return false;
-
-	return true;
-    }
-    
-    public boolean isSupersetOf( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set compare an IterableSet with \"null\".");
-
-	if (size() < other.size())
-	    return false;
-
-	Iterator it = other.iterator();
-	while (it.hasNext())
-	    if (contains( it.next()) == false)
-		return false;
-	
-	return true;
-    }
-
-    public boolean isStrictSubsetOf( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set compare an IterableSet with \"null\".");
-
-	if (size() >= other.size())
-	    return false;
-
-	return isSubsetOf( other);
-    }
-    
-    public boolean isStrictSupersetOf( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set compare an IterableSet with \"null\".");
-
-	if (size() <= other.size())
-	    return false;
-
-	return isSupersetOf( other);
-    }
-
-
-    public boolean intersects( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set intersect an IterableSet with \"null\".");
-
-	if (other.size() < size()) {
-	    Iterator it = other.iterator();
-	    while (it.hasNext())
-		if (contains( it.next()))
-		    return true;
+	public UnmodifiableIterableSet<T> asUnmodifiable() {
+		return new UnmodifiableIterableSet<T>(this);
 	}
-	else {
-	    Iterator it = iterator();
-	    while (it.hasNext())
-		if (other.contains( it.next()))
-		    return true;
-	}
-
-	return false;
-    }
-
-    public IterableSet intersection( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set intersect an IterableSet with \"null\".");
-
-	IterableSet c = new IterableSet();
-
-	if (other.size() < size()) {
-	    Iterator it = other.iterator();
-	    while (it.hasNext()) {
-		Object o = it.next();
-		
-		if (contains( o))
-		    c.add( o);
-	    }
-	}
-	else {
-	    Iterator it = iterator();
-	    while (it.hasNext()) {
-		Object o = it.next();
-		
-		if (other.contains( o))
-		    c.add( o);
-	    }
-	}
-	return c;
-    }
-
-    public IterableSet union( IterableSet other)
-    {
-	if (other == null)
-	    throw new IllegalArgumentException( "Cannot set union an IterableSet with \"null\".");
-
-	IterableSet c = new IterableSet();
-
-	c.addAll( this);
-	c.addAll( other);
-
-	return c;
-    }
-
-    public String toString()
-    {
-	StringBuffer b = new StringBuffer();
-
-	Iterator it = iterator();
-	while (it.hasNext()) {
-	    b.append( it.next().toString());
-	    b.append( "\n");
-	}
-
-	return b.toString();
-    }
 }

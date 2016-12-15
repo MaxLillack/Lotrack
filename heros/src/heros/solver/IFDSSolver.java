@@ -23,8 +23,10 @@ import heros.edgefunc.AllBottom;
 import heros.edgefunc.AllTop;
 import heros.edgefunc.EdgeIdentity;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 /**
  * A solver for an {@link IFDSTabulationProblem}. This solver in effect uses the {@link IDESolver}
@@ -38,7 +40,7 @@ import java.util.Set;
  * @param <I> The type of inter-procedural control-flow graph being used.
  * @see IFDSTabulationProblem
  */
-public class IFDSSolver<N,D,M,I extends InterproceduralCFG<N, M>,SootValue> extends IDESolver<N,D,M,IFDSSolver.BinaryDomain,I,SootValue> {
+public class IFDSSolver<N,D,M,I extends InterproceduralCFG<N, M>> extends IDESolver<N,D,M,IFDSSolver.BinaryDomain,I> {
 
 	protected static enum BinaryDomain { TOP,BOTTOM } 
 	
@@ -119,7 +121,7 @@ public class IFDSSolver<N,D,M,I extends InterproceduralCFG<N, M>,SootValue> exte
 			
 			class IFDSEdgeFunctions implements EdgeFunctions<N,D,M,BinaryDomain> {
 		
-				public EdgeFunction<BinaryDomain> getNormalEdgeFunction(N src,D srcNode,N tgt,D tgtNode) {
+				public EdgeFunction<BinaryDomain> getNormalEdgeFunction(N src,D srcNode,N tgt,D tgtNode, Collection<Entry<PathEdge<N, D>, EdgeFunction<BinaryDomain>>> matchingAbstractions) {
 					if(srcNode==ifdsProblem.zeroValue()) return ALL_BOTTOM;
 					return EdgeIdentity.v(); 
 				}

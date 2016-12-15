@@ -10,6 +10,12 @@
  ******************************************************************************/
 package heros;
 
+import heros.solver.PathEdge;
+
+import java.util.Collection;
+import java.util.Map.Entry;
+
+
 /**
  * Classes implementing this interface provide a range of edge functions used to
  * compute a V-type value for each of the finitely many D-type values reachable
@@ -44,7 +50,7 @@ public interface EdgeFunctions<N, D, M, V> {
 	 *            The D-type value with which the target value will be
 	 *            associated.
 	 */
-	public EdgeFunction<V> getNormalEdgeFunction(N curr, D currNode, N succ, D succNode);
+	public EdgeFunction<V> getNormalEdgeFunction(N curr, D currNode, N succ, D succNode, Collection<Entry<PathEdge<N, D>, EdgeFunction<V>>> matchingAbstractions);
 
 	/**
 	 * Returns the function that computes how the V-typed value changes when

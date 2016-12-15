@@ -26,19 +26,47 @@
 
 package soot.jimple.toolkits.typing;
 
-import soot.*;
-import soot.jimple.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import soot.ArrayType;
+import soot.DoubleType;
+import soot.FloatType;
+import soot.G;
+import soot.IntType;
+import soot.Local;
+import soot.LongType;
+import soot.NullType;
+import soot.PatchingChain;
+import soot.RefType;
+import soot.Scene;
+import soot.SootClass;
+import soot.Type;
+import soot.Unit;
+import soot.jimple.AssignStmt;
+import soot.jimple.InvokeStmt;
+import soot.jimple.Jimple;
+import soot.jimple.JimpleBody;
+import soot.jimple.NewExpr;
+import soot.jimple.SpecialInvokeExpr;
+import soot.jimple.Stmt;
 import soot.options.Options;
-import soot.util.*;
-import java.util.*;
-import soot.toolkits.graph.*;
-import soot.toolkits.scalar.*;
-import java.io.*;
+import soot.toolkits.scalar.LocalDefs;
+import soot.util.BitSetIterator;
+import soot.util.BitVector;
 
 /**
  * This class resolves the type of local variables.
  * @deprecated use {@link soot.jimple.toolkits.typing.fast.TypeResolver} instead
  **/
+@Deprecated
 public class TypeResolverBV
 {
   /** Reference to the class hierarchy **/
@@ -236,7 +264,7 @@ public class TypeResolverBV
     if(DEBUG)
       {
 	G.v().out.println("-- Body Start --");
-	for( Iterator stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
+	for( Iterator<Unit> stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
 	    final Stmt stmt = (Stmt) stmtIt.next();
 	    G.v().out.println(stmt);
 	  }
@@ -316,7 +344,7 @@ public class TypeResolverBV
   {
     ConstraintCollectorBV collector = new ConstraintCollectorBV(this, true);
 
-    for( Iterator stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
+    for( Iterator<Unit> stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
 
         final Stmt stmt = (Stmt) stmtIt.next();
 	if(DEBUG)
@@ -335,7 +363,7 @@ public class TypeResolverBV
   {
     ConstraintCollectorBV collector = new ConstraintCollectorBV(this, false);
 
-    for( Iterator stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
+    for( Iterator<Unit> stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
 
         final Stmt stmt = (Stmt) stmtIt.next();
 	if(DEBUG)
@@ -384,10 +412,11 @@ public class TypeResolverBV
     }
 
     // create lists for each array depth
-    LinkedList[] lists = new LinkedList[max + 1];
+    @SuppressWarnings("unchecked")
+	LinkedList<TypeVariableBV>[] lists = new LinkedList[max + 1];
     for(int i = 0; i <= max; i++)
       {
-	lists[i] = new LinkedList();
+	lists[i] = new LinkedList<TypeVariableBV>();
       }
 
     for (TypeVariableBV var : typeVariableList) {
@@ -698,8 +727,8 @@ public class TypeResolverBV
 
   private void assign_types_1_2() throws TypeException
   {
-    for( Iterator localIt = stmtBody.getLocals().iterator(); localIt.hasNext(); ) {
-        final Local local = (Local) localIt.next();
+    for( Iterator<Local> localIt = stmtBody.getLocals().iterator(); localIt.hasNext(); ) {
+        final Local local = localIt.next();
 	TypeVariableBV var = typeVariable(local);
 	
 	if(var == null)
@@ -765,8 +794,8 @@ public class TypeResolverBV
 
   private void assign_types_3() throws TypeException
   {
-    for( Iterator localIt = stmtBody.getLocals().iterator(); localIt.hasNext(); ) {
-        final Local local = (Local) localIt.next();
+    for( Iterator<Local> localIt = stmtBody.getLocals().iterator(); localIt.hasNext(); ) {
+        final Local local = localIt.next();
 	TypeVariableBV var = typeVariable(local);
 	
 	if(var == null ||
@@ -792,7 +821,7 @@ public class TypeResolverBV
 	s = new StringBuffer("Checking:\n");
       }
 
-    for( Iterator stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
+    for( Iterator<Unit> stmtIt = stmtBody.getUnits().iterator(); stmtIt.hasNext(); ) {
 
         final Stmt stmt = (Stmt) stmtIt.next();
 	if(DEBUG)
@@ -818,7 +847,7 @@ public class TypeResolverBV
   {
     ConstraintCheckerBV checker = new ConstraintCheckerBV(this, true);
     StringBuffer s = null;
-    PatchingChain units = stmtBody.getUnits();
+    PatchingChain<Unit> units = stmtBody.getUnits();
     Stmt[] stmts = new Stmt[units.size()];
     units.toArray(stmts);
 
@@ -997,9 +1026,8 @@ public class TypeResolverBV
 
   private void split_new()
   {
-    ExceptionalUnitGraph graph = new ExceptionalUnitGraph(stmtBody);
-    LocalDefs defs = new SmartLocalDefs(graph, new SimpleLiveLocals(graph));
-    PatchingChain units = stmtBody.getUnits();
+	LocalDefs defs = LocalDefs.Factory.newLocalDefs(stmtBody);
+    PatchingChain<Unit> units = stmtBody.getUnits();
     Stmt[] stmts = new Stmt[units.size()];
 
     units.toArray(stmts);

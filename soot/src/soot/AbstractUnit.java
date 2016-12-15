@@ -31,9 +31,11 @@ package soot;
 
 import soot.tagkit.*;
 import soot.util.*;
+
 import java.util.*;
 
 /** Provides default implementations for the methods in Unit. */
+@SuppressWarnings("serial")
 public abstract class AbstractUnit extends AbstractHost implements Unit 
 {
 
@@ -46,22 +48,24 @@ public abstract class AbstractUnit extends AbstractHost implements Unit
      * (this is important for aggregation)
      */
     @Override
-    public List getUseBoxes()
+    public List<ValueBox> getUseBoxes()
     {
-        return emptyList;
+        return Collections.emptyList();
     }
 
-    /** Returns a list of Boxes containing Values defined in this Unit.
+    /**
+     * Returns a list of Boxes containing Values defined in this Unit.
      * The list of boxes is dynamically updated as the structure changes.
      */
     @Override
-    public List getDefBoxes()
+    public List<ValueBox> getDefBoxes()
     {
-        return emptyList;
+        return Collections.emptyList();
     }
 
 
-    /** Returns a list of Boxes containing Units defined in this Unit; typically
+    /** 
+     * Returns a list of Boxes containing Units defined in this Unit; typically
      * branch targets.
      * The list of boxes is dynamically updated as the structure changes.
      */
@@ -70,21 +74,15 @@ public abstract class AbstractUnit extends AbstractHost implements Unit
     {
         return Collections.emptyList();
     }
-
-    /** Canonical AbstractUnit.emptyList list. */
-    static final public List emptyList = Collections.EMPTY_LIST;
-
+    
     /** List of UnitBoxes pointing to this Unit. */
     List<UnitBox> boxesPointingToThis = null;
-
-    /** List of ValueBoxes contained in this Unit. */
-    List valueBoxes = null;
-
+    
     /** Returns a list of Boxes pointing to this Unit. */
     @Override
     public List<UnitBox> getBoxesPointingToThis()
     {
-        if( boxesPointingToThis == null ) return emptyList;
+        if( boxesPointingToThis == null ) return Collections.emptyList();
         return Collections.unmodifiableList( boxesPointingToThis );
     }
 
@@ -107,27 +105,21 @@ public abstract class AbstractUnit extends AbstractHost implements Unit
     
     /** Returns a list of ValueBoxes, either used or defined in this Unit. */
     @Override
-    public List getUseAndDefBoxes()
+    public List<ValueBox> getUseAndDefBoxes()
     {
-        List useBoxes = getUseBoxes();
-        List defBoxes = getDefBoxes();
+        List<ValueBox> useBoxes = getUseBoxes();
+        List<ValueBox> defBoxes = getDefBoxes();
         if( useBoxes.isEmpty() ) {
+        	return defBoxes;
+        }
+        else {
             if( defBoxes.isEmpty() ) {
-                return emptyList;
-            } else {
-                return Collections.unmodifiableList(defBoxes);
+                return useBoxes;
             }
-        } else {
-            if( defBoxes.isEmpty() ) {
-                return Collections.unmodifiableList(useBoxes);
-            } else {
-                valueBoxes = new ArrayList();
-
+            else {
+                List<ValueBox> valueBoxes = new ArrayList<ValueBox>();
                 valueBoxes.addAll(defBoxes);
                 valueBoxes.addAll(useBoxes);
-
-                valueBoxes = Collections.unmodifiableList(valueBoxes);
-
                 return valueBoxes;
             }
         }
@@ -142,13 +134,13 @@ public abstract class AbstractUnit extends AbstractHost implements Unit
     @Override
     public void redirectJumpsToThisTo(Unit newLocation)
     {
-        List boxesPointing = this.getBoxesPointingToThis();
+        List<UnitBox> boxesPointing = getBoxesPointingToThis();
 
-        Object[] boxes = boxesPointing.toArray();
+        UnitBox[] boxes = boxesPointing.toArray(new UnitBox[boxesPointing.size()]);
         // important to change this to an array to have a static copy
         
-        for (Object element : boxes) {
-            UnitBox box = (UnitBox) element;
+        for (UnitBox element : boxes) {
+            UnitBox box = element;
 
             if(box.getUnit() != this)
                 throw new RuntimeException("Something weird's happening");

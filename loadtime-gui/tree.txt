@@ -1,0 +1,100 @@
+[info] List(Attributed(C:\Users\Max\.ivy2\cache\org.scala-lang\scala-library\jar
+s\scala-library-2.11.6.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.pl
+ay\twirl-api_2.11\jars\twirl-api_2.11-1.1.1.jar), Attributed(C:\Users\Max\.ivy2\
+cache\org.apache.commons\commons-lang3\jars\commons-lang3-3.4.jar), Attributed(C
+:\Users\Max\.ivy2\cache\org.scala-lang.modules\scala-xml_2.11\bundles\scala-xml_
+2.11-1.0.1.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.play\play-enha
+ncer\jars\play-enhancer-1.1.0.jar), Attributed(C:\Users\Max\.ivy2\cache\com.type
+safe.play\play-server_2.11\jars\play-server_2.11-2.4.1.jar), Attributed(C:\Users
+\Max\.ivy2\cache\com.typesafe.play\play_2.11\jars\play_2.11-2.4.1.jar), Attribut
+ed(C:\Users\Max\.ivy2\cache\com.typesafe.play\build-link\jars\build-link-2.4.1.j
+ar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.play\play-exceptions\jars\
+play-exceptions-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\org.javassist\ja
+vassist\bundles\javassist-3.19.0-GA.jar), Attributed(C:\Users\Max\.ivy2\cache\co
+m.typesafe.play\play-iteratees_2.11\jars\play-iteratees_2.11-2.4.1.jar), Attribu
+ted(C:\Users\Max\.ivy2\cache\org.scala-stm\scala-stm_2.11\jars\scala-stm_2.11-0.
+7.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe\config\bundles\config-1
+.3.0.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.play\play-json_2.11\
+jars\play-json_2.11-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe
+.play\play-functional_2.11\jars\play-functional_2.11-2.4.1.jar), Attributed(C:\U
+sers\Max\.ivy2\cache\com.typesafe.play\play-datacommons_2.11\jars\play-datacommo
+ns_2.11-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\joda-time\joda-time\jars
+\joda-time-2.7.jar), Attributed(C:\Users\Max\.ivy2\cache\org.joda\joda-convert\j
+ars\joda-convert-1.7.jar), Attributed(C:\Users\Max\.ivy2\cache\org.scala-lang\sc
+ala-reflect\jars\scala-reflect-2.11.6.jar), Attributed(C:\Users\Max\.ivy2\cache\
+com.fasterxml.jackson.core\jackson-core\bundles\jackson-core-2.5.4.jar), Attribu
+ted(C:\Users\Max\.ivy2\cache\com.fasterxml.jackson.core\jackson-annotations\bund
+les\jackson-annotations-2.5.4.jar), Attributed(C:\Users\Max\.ivy2\cache\com.fast
+erxml.jackson.core\jackson-databind\bundles\jackson-databind-2.5.4.jar), Attribu
+ted(C:\Users\Max\.ivy2\cache\com.fasterxml.jackson.datatype\jackson-datatype-jdk
+8\bundles\jackson-datatype-jdk8-2.5.4.jar), Attributed(C:\Users\Max\.ivy2\cache\
+com.fasterxml.jackson.datatype\jackson-datatype-jsr310\bundles\jackson-datatype-
+jsr310-2.5.4.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.play\play-ne
+tty-utils\jars\play-netty-utils-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\
+org.slf4j\slf4j-api\jars\slf4j-api-1.7.12.jar), Attributed(C:\Users\Max\.ivy2\ca
+che\org.slf4j\jul-to-slf4j\jars\jul-to-slf4j-1.7.12.jar), Attributed(C:\Users\Ma
+x\.ivy2\cache\org.slf4j\jcl-over-slf4j\jars\jcl-over-slf4j-1.7.12.jar), Attribut
+ed(C:\Users\Max\.ivy2\cache\org.scala-lang.modules\scala-parser-combinators_2.11
+\bundles\scala-parser-combinators_2.11-1.0.1.jar), Attributed(C:\Users\Max\.ivy2
+\cache\ch.qos.logback\logback-core\jars\logback-core-1.1.3.jar), Attributed(C:\U
+sers\Max\.ivy2\cache\ch.qos.logback\logback-classic\jars\logback-classic-1.1.3.j
+ar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.akka\akka-actor_2.11\jars\
+akka-actor_2.11-2.3.11.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.ak
+ka\akka-slf4j_2.11\jars\akka-slf4j_2.11-2.3.11.jar), Attributed(C:\Users\Max\.iv
+y2\cache\commons-codec\commons-codec\jars\commons-codec-1.10.jar), Attributed(C:
+\Users\Max\.ivy2\cache\xerces\xercesImpl\jars\xercesImpl-2.11.0.jar), Attributed
+(C:\Users\Max\.ivy2\cache\xml-apis\xml-apis\jars\xml-apis-1.4.01.jar), Attribute
+d(C:\Users\Max\.ivy2\cache\javax.transaction\jta\jars\jta-1.1.jar), Attributed(C
+:\Users\Max\.ivy2\cache\com.google.inject\guice\jars\guice-4.0.jar), Attributed(
+C:\Users\Max\.ivy2\cache\javax.inject\javax.inject\jars\javax.inject-1.jar), Att
+ributed(C:\Users\Max\.ivy2\cache\aopalliance\aopalliance\jars\aopalliance-1.0.ja
+r), Attributed(C:\Users\Max\.ivy2\cache\com.google.inject.extensions\guice-assis
+tedinject\jars\guice-assistedinject-4.0.jar), Attributed(C:\Users\Max\.ivy2\cach
+e\com.typesafe.play\play-java_2.11\jars\play-java_2.11-2.4.1.jar), Attributed(C:
+\Users\Max\.ivy2\cache\org.scala-lang.modules\scala-java8-compat_2.11\bundles\sc
+ala-java8-compat_2.11-0.3.0.jar), Attributed(C:\Users\Max\.ivy2\cache\org.yaml\s
+nakeyaml\bundles\snakeyaml-1.15.jar), Attributed(C:\Users\Max\.ivy2\cache\org.hi
+bernate\hibernate-validator\jars\hibernate-validator-5.0.3.Final.jar), Attribute
+d(C:\Users\Max\.ivy2\cache\javax.validation\validation-api\jars\validation-api-1
+.1.0.Final.jar), Attributed(C:\Users\Max\.ivy2\cache\com.fasterxml\classmate\bun
+dles\classmate-1.0.0.jar), Attributed(C:\Users\Max\.ivy2\cache\org.jboss.logging
+\jboss-logging\jars\jboss-logging-3.2.1.Final.jar), Attributed(C:\Users\Max\.ivy
+2\cache\org.springframework\spring-context\jars\spring-context-4.1.6.RELEASE.jar
+), Attributed(C:\Users\Max\.ivy2\cache\org.springframework\spring-core\jars\spri
+ng-core-4.1.6.RELEASE.jar), Attributed(C:\Users\Max\.ivy2\cache\org.springframew
+ork\spring-beans\jars\spring-beans-4.1.6.RELEASE.jar), Attributed(C:\Users\Max\.
+ivy2\cache\org.reflections\reflections\jars\reflections-0.9.9.jar), Attributed(C
+:\Users\Max\.ivy2\cache\com.google.guava\guava\bundles\guava-18.0.jar), Attribut
+ed(C:\Users\Max\.ivy2\cache\com.google.code.findbugs\annotations\jars\annotation
+s-2.0.1.jar), Attributed(C:\Users\Max\.ivy2\cache\net.jodah\typetools\bundles\ty
+petools-0.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\com.google.code.findbugs
+\jsr305\jars\jsr305-2.0.3.jar), Attributed(C:\Users\Max\.ivy2\cache\org.apache.t
+omcat\tomcat-servlet-api\jars\tomcat-servlet-api-8.0.21.jar), Attributed(C:\User
+s\Max\.ivy2\cache\com.typesafe.play\play-netty-server_2.11\jars\play-netty-serve
+r_2.11-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\io.netty\netty\bundles\ne
+tty-3.10.3.Final.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.netty\ne
+tty-http-pipelining\jars\netty-http-pipelining-1.1.4.jar), Attributed(C:\Users\M
+ax\.ivy2\cache\com.typesafe.play\play-java-jdbc_2.11\jars\play-java-jdbc_2.11-2.
+4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.play\play-jdbc_2.11\j
+ars\play-jdbc_2.11-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.
+play\play-jdbc-api_2.11\jars\play-jdbc-api_2.11-2.4.1.jar), Attributed(C:\Users\
+Max\.ivy2\cache\com.jolbox\bonecp\bundles\bonecp-0.8.0.RELEASE.jar), Attributed(
+C:\Users\Max\.ivy2\cache\com.zaxxer\HikariCP\bundles\HikariCP-2.3.7.jar), Attrib
+uted(C:\Users\Max\.ivy2\cache\com.h2database\h2\jars\h2-1.4.187.jar), Attributed
+(C:\Users\Max\.ivy2\cache\tyrex\tyrex\jars\tyrex-1.0.1.jar), Attributed(C:\Users
+\Max\.ivy2\cache\com.typesafe.play\play-cache_2.11\jars\play-cache_2.11-2.4.1.ja
+r), Attributed(C:\Users\Max\.ivy2\cache\net.sf.ehcache\ehcache-core\jars\ehcache
+-core-2.6.11.jar), Attributed(C:\Users\Max\.ivy2\cache\com.typesafe.play\play-ja
+va-ws_2.11\jars\play-java-ws_2.11-2.4.1.jar), Attributed(C:\Users\Max\.ivy2\cach
+e\com.typesafe.play\play-ws_2.11\jars\play-ws_2.11-2.4.1.jar), Attributed(C:\Use
+rs\Max\.ivy2\cache\com.ning\async-http-client\jars\async-http-client-1.9.21.jar)
+, Attributed(C:\Users\Max\.ivy2\cache\oauth.signpost\signpost-core\jars\signpost
+-core-1.2.1.2.jar), Attributed(C:\Users\Max\.ivy2\cache\oauth.signpost\signpost-
+commonshttp4\jars\signpost-commonshttp4-1.2.1.2.jar), Attributed(C:\Users\Max\.i
+vy2\cache\org.apache.httpcomponents\httpcore\jars\httpcore-4.0.1.jar), Attribute
+d(C:\Users\Max\.ivy2\cache\org.apache.httpcomponents\httpclient\jars\httpclient-
+4.0.1.jar), Attributed(C:\Users\Max\.ivy2\cache\commons-logging\commons-logging\
+jars\commons-logging-1.1.1.jar), Attributed(C:\Users\Max\.ivy2\cache\junit\junit
+\jars\junit-4.11.jar), Attributed(C:\Users\Max\.ivy2\cache\org.hamcrest\hamcrest
+-core\jars\hamcrest-core-1.3.jar), Attributed(C:\Users\Max\.ivy2\cache\commons-i
+o\commons-io\jars\commons-io-2.4.jar), Attributed(C:\Users\Max\.ivy2\cache\org.m

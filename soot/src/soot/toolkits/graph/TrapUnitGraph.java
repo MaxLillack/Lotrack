@@ -27,7 +27,9 @@
 package soot.toolkits.graph;
 
 import soot.*;
+
 import java.util.*;
+
 import soot.options.Options;
 
 
@@ -88,12 +90,10 @@ public class TrapUnitGraph extends UnitGraph
         if(Options.v().time())
             Timers.v().graphTimer.start();
 
-	unitToSuccs = new HashMap(size * 2 + 1, 0.7f);
-	unitToPreds = new HashMap(size * 2 + 1, 0.7f);
+	unitToSuccs = new HashMap<Unit, List<Unit>>(size * 2 + 1, 0.7f);
+	unitToPreds = new HashMap<Unit, List<Unit>>(size * 2 + 1, 0.7f);
 	buildUnexceptionalEdges(unitToSuccs, unitToPreds);
 	buildExceptionalEdges(unitToSuccs, unitToPreds);
-	makeMappedListsUnmodifiable(unitToSuccs);
-	makeMappedListsUnmodifiable(unitToPreds);
 
 	buildHeadsAndTails();
 
@@ -124,18 +124,16 @@ public class TrapUnitGraph extends UnitGraph
      *                    all the <code>Unit</code>s within the scope of
      *                    that <code>Trap</code>.
      */
-    protected void buildExceptionalEdges(Map unitToSuccs, Map unitToPreds) {
-	for (Iterator trapIt = body.getTraps().iterator(); 
-	     trapIt.hasNext(); ) {
-	    Trap trap = (Trap) trapIt.next();
-	    Unit first = trap.getBeginUnit();
-	    Unit last = (Unit) unitChain.getPredOf(trap.getEndUnit());
-	    Unit catcher = trap.getHandlerUnit();
-	    for (Iterator unitIt = unitChain.iterator(first, last);
-		 unitIt.hasNext(); ) {
-		Unit trapped = (Unit) unitIt.next();
-		addEdge(unitToSuccs, unitToPreds, trapped, catcher);
-	    }
-	}
+    protected void buildExceptionalEdges(Map<Unit, List<Unit>> unitToSuccs, Map<Unit, List<Unit>> unitToPreds) {
+    	for (Trap trap : body.getTraps()) {
+		    Unit first = trap.getBeginUnit();
+		    Unit last =  unitChain.getPredOf(trap.getEndUnit());
+		    Unit catcher = trap.getHandlerUnit();	
+		    
+		    for (Iterator<Unit> unitIt = unitChain.iterator(first, last); unitIt.hasNext(); ) {
+		    	Unit trapped = unitIt.next();
+		    	addEdge(unitToSuccs, unitToPreds, trapped, catcher);
+		    }
+    	}
     }
 }

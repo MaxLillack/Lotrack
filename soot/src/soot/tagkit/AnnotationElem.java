@@ -25,6 +25,8 @@
 
 package soot.tagkit;
 
+import soot.util.Switchable;
+
 
 /** 
  * Represents the base class of annotation elements
@@ -32,7 +34,7 @@ package soot.tagkit;
  * for Java 1.5.
  */
 
-public class AnnotationElem
+public abstract class AnnotationElem implements Switchable
 {
 
     char kind;
@@ -54,5 +56,9 @@ public class AnnotationElem
     public String getName(){
         return name;
     }
+
+	public void setName(String name) {
+		this.name = name;
+	}
 }
 

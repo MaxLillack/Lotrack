@@ -3,9 +3,13 @@
 /classes
 /.classpath
 /sootOutput
-# IntelliJ IDEA project dir
+# IntelliJ IDEA project directory
 .idea
 # Directory with .jars required to build Soot with IntelliJ IDEA
 /libs_intellij
-META-INF/MANIFEST.MF
-eclipse/ca.mcgill.sable.soot/src/ca/mcgill/sable/soot/ui/PhaseOptionsDialog.java
+/javadoc
+/reports
+/testclasses
+# Eclipse settings directory
+/.settings
+

@@ -27,22 +27,22 @@
 
 package soot.jimple.internal;
 
-import soot.tagkit.*;
 import soot.*;
 import soot.util.*;
 import soot.baf.*;
 import soot.jimple.*;
+
 import java.util.*;
 
+@SuppressWarnings("serial")
 public abstract class AbstractSpecialInvokeExpr extends AbstractInstanceInvokeExpr 
            implements SpecialInvokeExpr, ConvertToBaf
 {
     protected AbstractSpecialInvokeExpr(ValueBox baseBox, SootMethodRef methodRef,
                                 ValueBox[] argBoxes)
     {
+    	super(methodRef, baseBox, argBoxes); 
         if( methodRef.isStatic() ) throw new RuntimeException("wrong static-ness");
-        this.baseBox = baseBox; this.methodRef = methodRef;
-        this.argBoxes = argBoxes;
     }
 
     public boolean equivTo(Object o)
@@ -126,14 +126,8 @@ public abstract class AbstractSpecialInvokeExpr extends AbstractInstanceInvokeEx
 	    ((ConvertToBaf)(element.getValue())).convertToBaf(context, out);
 	}
        
-       Unit u;
-       out.add(u = Baf.v().newSpecialInvokeInst(methodRef));
-
-       Unit currentUnit = context.getCurrentUnit();
-
-	Iterator it = currentUnit.getTags().iterator();	
-	while(it.hasNext()) {
-	    u.addTag((Tag) it.next());
-	}
+       Unit u = Baf.v().newSpecialInvokeInst(methodRef);
+       out.add(u);
+       u.addAllTagsOf(context.getCurrentUnit());
     }
 }

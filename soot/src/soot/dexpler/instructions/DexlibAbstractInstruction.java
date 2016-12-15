@@ -24,10 +24,14 @@
 
 package soot.dexpler.instructions;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
+import org.jf.dexlib2.iface.instruction.FiveRegisterInstruction;
 import org.jf.dexlib2.iface.instruction.Instruction;
+import org.jf.dexlib2.iface.instruction.RegisterRangeInstruction;
 
 import soot.DoubleType;
 import soot.FloatType;
@@ -36,6 +40,7 @@ import soot.LongType;
 import soot.Type;
 import soot.Unit;
 import soot.dexpler.DexBody;
+import soot.options.Options;
 import soot.tagkit.BytecodeOffsetTag;
 import soot.tagkit.Host;
 import soot.tagkit.LineNumberTag;
@@ -54,7 +59,6 @@ public abstract class DexlibAbstractInstruction {
 //    protected Unit beginUnit;
 //    protected Unit endUnit;
     protected Unit unit;
-    protected DexBody body = null;
 
     public Instruction getInstruction() {
       return instruction;
@@ -155,11 +159,12 @@ public abstract class DexlibAbstractInstruction {
      *            the host to tag
      */
     protected void addTags(Host host) {
-        if (lineNumber != -1) {
+        if (Options.v().keep_line_number() && lineNumber != -1) {
             host.addTag(new LineNumberTag(lineNumber));
             host.addTag(new SourceLineNumberTag(lineNumber));
         }
-        host.addTag(new BytecodeOffsetTag(codeAddress));
+        if (Options.v().keep_offset())
+        	host.addTag(new BytecodeOffsetTag(codeAddress));
     }
 
 //    /**
@@ -358,5 +363,40 @@ public abstract class DexlibAbstractInstruction {
         };
 
       //public abstract void getConstraint(IDalvikTyper DalvikTyper.v());
+
+      /**
+       * Return the indices used in the given instruction.
+       *
+       * @param instruction a range invocation instruction
+       * @return a list of register indices
+       */
+      protected List<Integer> getUsedRegistersNums(RegisterRangeInstruction instruction) {
+          List<Integer> regs = new ArrayList<Integer>();
+          int start = instruction.getStartRegister();
+          for (int i = start; i < start + instruction.getRegisterCount(); i++)
+              regs.add(i);
+
+          return regs;
+      }
+      
+      /**
+       * Return the indices used in the given instruction.
+       *
+       * @param instruction a invocation instruction
+       * @return a list of register indices
+       */
+      protected List<Integer> getUsedRegistersNums(FiveRegisterInstruction instruction) {
+          int[] regs = {
+              instruction.getRegisterC(),
+              instruction.getRegisterD(),
+              instruction.getRegisterE(),
+              instruction.getRegisterF(),
+              instruction.getRegisterG(),
+          };
+          List<Integer> l = new ArrayList<Integer>();
+          for (int i = 0; i < instruction.getRegisterCount(); i++)
+              l.add(regs[i]);
+          return l;
+      }
 
 }

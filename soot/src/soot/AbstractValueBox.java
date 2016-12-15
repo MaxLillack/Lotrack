@@ -30,12 +30,14 @@ import soot.tagkit.*;
 
 /** Reference implementation for ValueBox; just
  * add a canContainValue method. */
+@SuppressWarnings("serial")
 public abstract class AbstractValueBox extends AbstractHost implements ValueBox
 {
     Value value;
 
     public void setValue(Value value)
     {
+    	if(value==null) throw new IllegalArgumentException("value may not be null");
         if(canContainValue(value))
             this.value = value;
         else

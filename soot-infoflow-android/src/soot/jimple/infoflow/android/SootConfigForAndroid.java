@@ -21,6 +21,7 @@ public class SootConfigForAndroid implements IInfoflowConfig{
 	@Override
 	public void setSootOptions(Options options) {
 		// explicitly include packages for shorter runtime:
+		// is not used/working
 		List<String> excludeList = new LinkedList<String>();
 		excludeList.add("java.");
 		excludeList.add("sun.misc.");
@@ -31,6 +32,7 @@ public class SootConfigForAndroid implements IInfoflowConfig{
 		excludeList.add("org.joda.");
 		options.set_exclude(excludeList);
 		Options.v().set_no_bodies_for_excluded(true);
+		Options.v().set_keep_line_number(true);
 		options.set_output_format(Options.output_format_none);
 
 	}

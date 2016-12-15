@@ -56,5 +56,21 @@ public class MaxTest {
 		ConnectionManager cm = new ConnectionManager();
 		cm.publish(y.f);
 	}
+	
+	public void test3()
+	{
+		String taint = TelephonyManager.getDeviceId();
+		boolean test = test3a(taint);
+		if(test)
+		{
+			ConnectionManager cm = new ConnectionManager();
+			cm.publish(taint);
+		}
+	}
+	
+	public boolean test3a(String taint)
+	{
+		return taint != null;
+	}
 
 }

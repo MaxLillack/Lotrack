@@ -41,6 +41,8 @@ import java.util.List;
 import java.util.Map;
 
 import soot.baf.DoubleWordType;
+import soot.jimple.DoubleConstant;
+import soot.jimple.FloatConstant;
 import soot.jimple.IdentityStmt;
 import soot.jimple.Stmt;
 import soot.options.Options;
@@ -246,7 +248,10 @@ public abstract class AbstractJasminClass
     
     private String getVisibilityAnnotationAttr(VisibilityAnnotationTag tag){
         StringBuffer sb = new StringBuffer();
-        if (tag.getVisibility() == AnnotationConstants.RUNTIME_VISIBLE){
+        if(tag == null){
+        	return "";
+        }else 
+        	if (tag.getVisibility() == AnnotationConstants.RUNTIME_VISIBLE){
             sb.append(".runtime_visible_annotation\n");
         }
         else if(tag.getVisibility() == AnnotationConstants.RUNTIME_INVISIBLE){
@@ -283,16 +288,27 @@ public abstract class AbstractJasminClass
         }
         ArrayList<VisibilityAnnotationTag> vis_list = tag.getVisibilityAnnotations();
         if (vis_list != null){
-            Iterator<VisibilityAnnotationTag> it = vis_list.iterator();
-            while (it.hasNext()){
-                sb.append(getVisibilityAnnotationAttr(it.next()));
+            for (VisibilityAnnotationTag vat : vis_list) {
+            	VisibilityAnnotationTag safeVat = vat == null
+            			? getSafeVisibilityAnnotationTag(tag.getKind()) : vat;
+                sb.append(getVisibilityAnnotationAttr(safeVat));
             }
         }
         sb.append(".end .param\n");
         return sb.toString();    
     }
-   
-    private String getElemAttr(AnnotationElem elem){
+    
+    private static Map<Integer, VisibilityAnnotationTag> safeVats =
+    		new HashMap<Integer, VisibilityAnnotationTag>();
+    
+    private VisibilityAnnotationTag getSafeVisibilityAnnotationTag(int kind) {
+    	VisibilityAnnotationTag safeVat = safeVats.get(kind);
+		if (safeVat == null)
+			safeVats.put(kind, safeVat = new VisibilityAnnotationTag(kind));
+		return safeVat;
+	}
+
+	private String getElemAttr(AnnotationElem elem){
         StringBuffer result = new StringBuffer(".elem ");
         switch (elem.getKind()){
             case 'Z': {
@@ -348,14 +364,14 @@ public abstract class AbstractJasminClass
             case 'F': {
                         result.append(".float_kind ");
                         result.append("\""+elem.getName()+"\" ");
-                        result.append(Float.floatToRawIntBits(((AnnotationFloatElem)elem).getValue()));
+                        result.append(((AnnotationFloatElem)elem).getValue());
                         result.append("\n");
                         break;
                       }
             case 'D': {
                         result.append(".doub_kind ");
                         result.append("\""+elem.getName()+"\" ");
-                        result.append(Double.doubleToRawLongBits(((AnnotationDoubleElem)elem).getValue()));
+                        result.append(((AnnotationDoubleElem)elem).getValue());
                         result.append("\n");
                         break;
                       }
@@ -441,13 +457,17 @@ public abstract class AbstractJasminClass
                 // 'Badly formatted number' error. When analyzing an Android 
                 // applications (.apk) their name is stored in srcName and 
                 // can start with a digit.
-                if (Options.v().android_jars() != "" && Character.isDigit(srcName.charAt(0))) 
+                if (!Options.v().android_jars().isEmpty()
+                		&& !srcName.isEmpty()
+                		&& Character.isDigit(srcName.charAt(0))) 
                     srcName = "n_"+ srcName;
                 
-                // Jasmin does not support blanks, so get rid of them
+                // Jasmin does not support blanks and quotes, so get rid of them
                 srcName = srcName.replace(" ", "-");
+                srcName = srcName.replace("\"", "");
                 
-             	emit(".source "+srcName);
+                if (!srcName.isEmpty())
+                	emit(".source "+srcName);
             }
             if(Modifier.isInterface(modifiers))
             {
@@ -500,16 +520,16 @@ public abstract class AbstractJasminClass
 
 
     // emit synthetic attributes
-    if (sootClass.hasTag("SyntheticTag")){
+    if (sootClass.hasTag("SyntheticTag") || Modifier.isSynthetic(sootClass.getModifiers())){
         emit(".synthetic\n");
     }
     // emit inner class attributes
-    if (sootClass.hasTag("InnerClassAttribute")){
+    InnerClassAttribute ica = (InnerClassAttribute) sootClass.getTag("InnerClassAttribute");
+    if (ica != null && ica.getSpecs().size() > 0){
         if (!Options.v().no_output_inner_classes_attribute()){
             emit(".inner_class_attr ");
-            Iterator<Tag> innersIt = ((InnerClassAttribute)sootClass.getTag("InnerClassAttribute")).getSpecs().iterator();
-            while (innersIt.hasNext()){
-                InnerClassTag ict = (InnerClassTag)innersIt.next();
+            for (InnerClassTag ict : ((InnerClassAttribute)sootClass.getTag(
+            		"InnerClassAttribute")).getSpecs()) {
                 //System.out.println("inner class tag: "+ict);
                 emit(".inner_class_spec_attr "+
                     "\""+ict.getInnerClass()+"\" "+
@@ -575,15 +595,15 @@ public abstract class AbstractJasminClass
                 }
                 else if (field.hasTag("FloatConstantValueTag")){
                     fieldString += " = ";
-                    float val = ((FloatConstantValueTag)field.getTag("FloatConstantValueTag")).getFloatValue();
-                    fieldString += Float.floatToRawIntBits(val);
+                    FloatConstantValueTag val = (FloatConstantValueTag) field.getTag("FloatConstantValueTag");
+                    fieldString += floatToString(val.getFloatValue());
                 }
                 else if (field.hasTag("DoubleConstantValueTag")){
                     fieldString += " = ";
-                    double val = ((DoubleConstantValueTag)field.getTag("DoubleConstantValueTag")).getDoubleValue();
-                    fieldString += Double.doubleToRawLongBits(val);
+                    DoubleConstantValueTag val = (DoubleConstantValueTag) field.getTag("DoubleConstantValueTag");
+                    fieldString += doubleToString(val.getDoubleValue());
                 }
-                if (field.hasTag("SyntheticTag")){
+                if (field.hasTag("SyntheticTag") || Modifier.isSynthetic(field.getModifiers())){
                     fieldString +=" .synthetic";
                 }
 
@@ -711,7 +731,7 @@ public abstract class AbstractJasminClass
                 SootClass exceptClass = throwsIt.next();
                 emit(".throws "+exceptClass.getName());
             }
-            if (method.hasTag("SyntheticTag")){
+            if (method.hasTag("SyntheticTag") || Modifier.isSynthetic(method.getModifiers())){
                 emit(".synthetic");
             }
             if (method.hasTag("DeprecatedTag")){
@@ -767,6 +787,56 @@ public abstract class AbstractJasminClass
         for (String s : code)
             out.println(s);
     }
+	
+    protected String doubleToString(DoubleConstant v) {
+		String s = v.toString();
+		
+		if(s.equals("#Infinity"))
+		    s="+DoubleInfinity";
+		else if(s.equals("#-Infinity"))
+		    s="-DoubleInfinity";
+		else if(s.equals("#NaN"))
+		    s="+DoubleNaN";
+		return s;
+	}
+    
+    protected String doubleToString(double d) {
+        String doubleString = new Double(d).toString();
+        
+        if (doubleString.equals("NaN"))
+        	return "+DoubleNaN";
+        else if (doubleString.equals("Infinity"))
+		    return "+DoubleInfinity";
+        else if (doubleString.equals("-Infinity"))
+        	return "-DoubleInfinity";
+        
+        return doubleString;
+	}
+
+    protected String floatToString(FloatConstant v) {
+		String s = v.toString();
+		
+		if(s.equals("#InfinityF"))
+		    s="+FloatInfinity";
+		else if(s.equals("#-InfinityF"))
+		    s="-FloatInfinity";
+		else if(s.equals("#NaNF"))
+		    s="+FloatNaN";
+		return s;
+	}
+
+    protected String floatToString(float d) {
+        String floatString = new Float(d).toString();
+        
+        if (floatString.equals("NaN"))
+        	return "+FloatNaN";
+        else if (floatString.equals("Infinity"))
+		    return "+FloatInfinity";
+        else if (floatString.equals("-Infinity"))
+        	return "-FloatInfinity";
+        
+        return floatString;
+	}
 
 }
 

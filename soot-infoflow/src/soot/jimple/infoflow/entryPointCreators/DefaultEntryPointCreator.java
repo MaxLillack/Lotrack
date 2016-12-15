@@ -33,7 +33,6 @@ import soot.jimple.JimpleBody;
 import soot.jimple.infoflow.data.SootMethodAndClass;
 import soot.jimple.infoflow.util.SootMethodRepresentationParser;
 import soot.jimple.internal.JEqExpr;
-import soot.jimple.internal.JGotoStmt;
 import soot.jimple.internal.JIfStmt;
 import soot.jimple.internal.JNopStmt;
 import soot.jimple.toolkits.scalar.NopEliminator;
@@ -68,10 +67,11 @@ public class DefaultEntryPointCreator extends BaseEntryPointCreator {
         {
         	String className = sootClass.getName();
         	
-        	if(!className.startsWith("java.") && !className.startsWith("sun.")) {
+        	if(!className.startsWith("java.") && !className.startsWith("javax.") && !className.startsWith("sun.") && !className.startsWith("jdk.")  && !className.startsWith("org.apache.commons")  && !className.startsWith("com.google.common")) {
+        		//logger.info("SootClass {}", sootClass.getName());
         		if(sootClass.declaresMethod("void <clinit>()")) {
         			SootMethod clinit = sootClass.getMethod("void <clinit>()");
-		        	logger.info("SootClass {}", sootClass.getName());
+		        	
 					InvokeExpr clinitInvoke = Jimple.v().newStaticInvokeExpr(clinit.makeRef());
 					body.getUnits().add(Jimple.v().newInvokeStmt(clinitInvoke));
         		}

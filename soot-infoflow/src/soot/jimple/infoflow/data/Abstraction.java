@@ -107,7 +107,7 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 			Value sourceVal, Stmt sourceStmt, Object userData,
 			boolean exceptionThrown,
 			boolean isImplicit){
-		this(taint, taintSubFields, new SourceContext(sourceVal, sourceStmt, userData),
+		this(taint, taintSubFields, new SourceContext(new AccessPath(taint, taintSubFields), sourceStmt, userData),
 				exceptionThrown, null, isImplicit);
 	}
 
@@ -212,7 +212,7 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 		if (!abs.isAbstractionActive())
 			abs.dependsOnCutAP = abs.dependsOnCutAP || p.isCutOffApproximation();
 		
-		abs.sourceContext = null;
+		abs.sourceContext = null;		
 		return abs;
 	}
 	
@@ -350,7 +350,7 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 		if (sourceContext != null) {
 			// Construct the path root
 			SourceContextAndPath sourceAndPath = new SourceContextAndPath
-					(sourceContext.getValue(), sourceContext.getStmt(),
+					(sourceContext.getAccessPath(), sourceContext.getStmt(),
 							sourceContext.getUserData()).extendPath(sourceContext.getStmt());
 			pathCache.add(sourceAndPath);
 			
@@ -390,14 +390,36 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 			SourceContext context = getSourceContext();
 			if(context.getUserData() != null) {
 				FeatureInfo featureInfo = (FeatureInfo) context.getUserData();
-				featureInfoString = featureInfo.getIndex() + ": " + featureInfo.getValue();
+				featureInfoString = featureInfo.toString();
 			}
 		}
+		
+//		if(activationUnit != null) {
+//			featureInfoString += " activationUnit: " + activationUnit.toString() + "(" + activationUnit.hashCode() + ")";
+//		}
+//		
+//		if(sourceContext != null) {
+//			featureInfoString += " sourceContext: " + "(" + sourceContext.hashCode() + ")";
+//		}
+//		
+//		if(postdominators != null) {
+//			featureInfoString += " postdominators: " + "(" + postdominators.hashCode() + ")";
+//		}
+//		
+//		if(accessPath != null) {
+//			featureInfoString += " accessPath: " + accessPath.toString() + "(" + accessPath.hashCode() + ")";
+//		}
+//		
+//		featureInfoString += " exceptionThrown: " + exceptionThrown;
+//		featureInfoString += " dependsOnCutAP: " + dependsOnCutAP;
+//		featureInfoString += " isImplicit: " + isImplicit;
 		
 		return (isAbstractionActive()?"":"_")
 				+accessPath.toString() 
 				+ " | "+(activationUnit==null?"":activationUnit.toString()) 
-				+ ">>" + featureInfoString;
+				+ ">>"
+//				+ (accessPath.toString().equals(" *") ? currentStmt.toString() : "")
+				+ featureInfoString;
 	}
 	
 	public AccessPath getAccessPath(){
@@ -521,12 +543,30 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 	 * false
 	 */
 	private boolean localEquals(Abstraction other) {
+		
+//		boolean looksSimiliar = toString().equals(other.toString());
+		
 		// deliberately ignore prevAbs
 		if (sourceContext == null) {
 			if (other.sourceContext != null)
 				return false;
-		} else if (!sourceContext.equals(other.sourceContext))
+		}
+		else if (!sourceContext.equals(other.sourceContext)) {
+//			if(looksSimiliar) {
+//				int a = 0;
+//				sourceContext.equals(other.sourceContext);
+//			}
 			return false;
+		}
+		// @TODO: Hack: Only considers feature value but not other parts of source context
+//		if (sourceContext != null && other.sourceContext != null && sourceContext.getUserData() != null && other.sourceContext.getUserData() != null) {
+//			FeatureInfo featureInfo = (FeatureInfo) sourceContext.getUserData();
+//			FeatureInfo featureInfoOther = (FeatureInfo) other.sourceContext.getUserData();
+//			if(!featureInfo.getValue().equals(featureInfoOther.getValue()))
+//			{
+//				return false;
+//			}
+//		} 	
 		if (activationUnit == null) {
 			if (other.activationUnit != null)
 				return false;
@@ -541,28 +581,37 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 			return false;
 		if(this.dependsOnCutAP != other.dependsOnCutAP)
 			return false;
-		if(this.isImplicit != other.isImplicit)
-			return false;
+//		if(this.isImplicit != other.isImplicit)
+//			return false;
 
 		return true;
 	}
 	
 	@Override
 	public int hashCode() {
-		if (this.hashCode != 0)
-			return hashCode;
+//		if (this.hashCode != 0)
+//			return hashCode;
 
 		final int prime = 31;
 		int result = 1;
 	
 		// deliberately ignore prevAbs
+//		result = prime * result + ((sourceContext == null) ? 0 : sourceContext.hashCode());
+		// @TODO: Hack: Only considers feature value but not other parts of source context
+//		if(sourceContext != null)
+//		{
+//			FeatureInfo featureInfo = (FeatureInfo) sourceContext.getUserData();
+//			if(featureInfo != null) {
+//				result = prime * result + featureInfo.getValue().hashCode();
+//			}
+//		}
 		result = prime * result + ((sourceContext == null) ? 0 : sourceContext.hashCode());
 		result = prime * result + ((accessPath == null) ? 0 : accessPath.hashCode());
 		result = prime * result + ((activationUnit == null) ? 0 : activationUnit.hashCode());
 		result = prime * result + (exceptionThrown ? 1231 : 1237);
 		result = prime * result + ((postdominators == null) ? 0 : postdominators.hashCode());
 		result = prime * result + (dependsOnCutAP ? 1231 : 1237);
-		result = prime * result + (isImplicit ? 1231 : 1237);
+//		result = prime * result + (isImplicit ? 1231 : 1237);
 		this.hashCode = result;
 		
 		return this.hashCode;
@@ -599,6 +648,10 @@ public class Abstraction implements Cloneable, LinkedNode<Abstraction> {
 	Abstraction getPredecessor() {
         //throw new UnsupportedOperationException("deactived for loadtime-analysis");
 		return this.predecessor;
+	}
+
+	@Override
+	public void setCallingContext(Abstraction callingContext) {
 	}
 	
 	@Override

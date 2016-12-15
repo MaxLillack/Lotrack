@@ -65,6 +65,7 @@ import soot.jimple.infoflow.data.SourceContextAndPath;
 import soot.jimple.infoflow.handlers.TaintPropagationHandler;
 import soot.jimple.infoflow.handlers.TaintPropagationHandler.FlowFunctionType;
 import soot.jimple.infoflow.loadtime.FeatureInfo;
+import soot.jimple.infoflow.loadtime.MongoLoader;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.solver.IInfoflowCFG.UnitContainer;
 import soot.jimple.infoflow.solver.InfoflowCFG;
@@ -1412,7 +1413,7 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 						 * for the given call, otherwise false
 						 */
 						private boolean hasValidCallees(Unit call) {
-							Set<SootMethod> callees = interproceduralCFG().getCalleesOfCallAt(call);
+							Collection<SootMethod> callees = interproceduralCFG().getCalleesOfCallAt(call);
 							for (SootMethod callee : callees)
 								if (callee.isConcrete())
 										return true;
@@ -1472,7 +1473,7 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
     				: abs.getAbstraction().getSources())
     			if (context.getSymbolic() == null) {
 					results.addResult(abs.getSinkValue(), abs.getSinkStmt(),
-							context.getValue(), context.getStmt(), context.getUserData(),
+							context.getAccessPath(), context.getStmt(), context.getUserData(),
 							context.getPath(), abs.getSinkStmt());
 //					System.out.println("\n\n\n\n\n");
 //					System.out.println(context.getPath());

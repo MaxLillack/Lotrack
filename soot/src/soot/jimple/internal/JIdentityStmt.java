@@ -23,103 +23,76 @@
  * contributors.  (Soot is distributed at http://www.sable.mcgill.ca/soot)
  */
 
-
-
-
-
-
 package soot.jimple.internal;
 
-import soot.tagkit.*;
 import soot.*;
 import soot.jimple.*;
 import soot.baf.*;
 import soot.util.*;
 import java.util.*;
 
-public class JIdentityStmt extends AbstractDefinitionStmt 
-    implements IdentityStmt
-{
-    public JIdentityStmt(Value local, Value identityValue)
-    {
-        this(Jimple.v().newLocalBox(local),
-             Jimple.v().newIdentityRefBox(identityValue));
-    }
-
-    protected JIdentityStmt(ValueBox localBox, ValueBox identityValueBox)
-    {
-        this.leftBox = localBox; this.rightBox = identityValueBox;
-
-        defBoxes = Collections.singletonList(leftBox);
-    }
-
-    public Object clone()
-    {
-        return new JIdentityStmt(Jimple.cloneIfNecessary(getLeftOp()), Jimple.cloneIfNecessary(getRightOp()));
-    }
-
-    public String toString()
-    {
-        return leftBox.getValue().toString() + " := " + rightBox.getValue().toString();
-    }
-    
-    public void toString( UnitPrinter up ) {
-        leftBox.toString(up);
-        up.literal(" := ");
-        rightBox.toString(up);
-    }
-
-    public void setLeftOp(Value local)
-    {
-        leftBox.setValue(local);
-    }
-
-    public void setRightOp(Value identityRef)
-    {
-        rightBox.setValue(identityRef);
-    }
-
-    public void apply(Switch sw)
-    {
-        ((StmtSwitch) sw).caseIdentityStmt(this);
-    }    
-    
-    public void convertToBaf(JimpleToBafContext context, List<Unit> out)
-    {
-        Value currentRhs = getRightOp();
-        Value newRhs;
-        
-        if(currentRhs instanceof ThisRef)
-            newRhs = Baf.v().newThisRef((RefType)((ThisRef) currentRhs).getType());
-        else if(currentRhs instanceof ParameterRef)
-            newRhs = Baf.v().newParameterRef(((ParameterRef)currentRhs).getType(), ((ParameterRef) currentRhs).getIndex());
-        else if(currentRhs instanceof CaughtExceptionRef)
-            { 
-		Unit u = Baf.v().newStoreInst(RefType.v(), 
-                       context.getBafLocalOfJimpleLocal((Local) getLeftOp()));
-                out.add(u);
-
-		Iterator it = getTags().iterator();
-		while(it.hasNext()) {
-		    u.addTag((Tag) it.next());
-		}
-		return; 
-	    }
-        else
-            throw new RuntimeException("Don't know how to convert unknown rhs");
-	Unit u = Baf.v().newIdentityInst(context.getBafLocalOfJimpleLocal
-                                         ((Local) getLeftOp()), newRhs);
-        out.add(u);
-	Iterator it = getTags().iterator();
-	while(it.hasNext()) {
-	    u.addTag((Tag) it.next());
+public class JIdentityStmt extends AbstractDefinitionStmt implements
+		IdentityStmt {
+	public JIdentityStmt(Value local, Value identityValue) {
+		this(Jimple.v().newLocalBox(local), Jimple.v().newIdentityRefBox(
+				identityValue));
 	}
-    }
 
+	protected JIdentityStmt(ValueBox localBox, ValueBox identityValueBox) {
+		super(localBox, identityValueBox);
+	}
+
+	public Object clone() {
+		return new JIdentityStmt(Jimple.cloneIfNecessary(getLeftOp()),
+				Jimple.cloneIfNecessary(getRightOp()));
+	}
+
+	public String toString() {
+		return leftBox.getValue().toString() + " := "
+				+ rightBox.getValue().toString();
+	}
+
+	public void toString(UnitPrinter up) {
+		leftBox.toString(up);
+		up.literal(" := ");
+		rightBox.toString(up);
+	}
+
+	public void setLeftOp(Value local) {
+		leftBox.setValue(local);
+	}
+
+	public void setRightOp(Value identityRef) {
+		rightBox.setValue(identityRef);
+	}
+
+	public void apply(Switch sw) {
+		((StmtSwitch) sw).caseIdentityStmt(this);
+	}
+
+	public void convertToBaf(JimpleToBafContext context, List<Unit> out) {
+		Value currentRhs = getRightOp();
+		Value newRhs;
+
+		if (currentRhs instanceof ThisRef)
+			newRhs = Baf.v().newThisRef(
+					(RefType) ((ThisRef) currentRhs).getType());
+		else if (currentRhs instanceof ParameterRef)
+			newRhs = Baf.v().newParameterRef(
+					((ParameterRef) currentRhs).getType(),
+					((ParameterRef) currentRhs).getIndex());
+		else if (currentRhs instanceof CaughtExceptionRef) {
+			Unit u = Baf.v().newStoreInst(RefType.v(),
+					context.getBafLocalOfJimpleLocal((Local) getLeftOp()));
+			u.addAllTagsOf(this);
+			out.add(u);
+			return;
+		} else
+			throw new RuntimeException("Don't know how to convert unknown rhs");
+		Unit u = Baf.v().newIdentityInst(
+				context.getBafLocalOfJimpleLocal((Local) getLeftOp()), newRhs);
+		u.addAllTagsOf(this);
+		out.add(u);
+	}
 
 }
-
-
-
-
-

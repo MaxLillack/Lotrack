@@ -30,14 +30,71 @@
 
 
 package soot.coffi;
-import soot.options.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.Vector;
 
-import java.util.*;
-
-import soot.*;
-import soot.jimple.*;
-import soot.util.*;
-import soot.tagkit.*;
+import soot.ArrayType;
+import soot.BooleanType;
+import soot.ByteType;
+import soot.CharType;
+import soot.DoubleType;
+import soot.FloatType;
+import soot.G;
+import soot.IntType;
+import soot.Local;
+import soot.LongType;
+import soot.Modifier;
+import soot.PatchingChain;
+import soot.RefType;
+import soot.Scene;
+import soot.ShortType;
+import soot.SootClass;
+import soot.SootFieldRef;
+import soot.SootMethod;
+import soot.SootMethodRef;
+import soot.StmtAddressType;
+import soot.Trap;
+import soot.Type;
+import soot.Unit;
+import soot.UnknownType;
+import soot.Value;
+import soot.VoidType;
+import soot.jimple.ArrayRef;
+import soot.jimple.ClassConstant;
+import soot.jimple.ConditionExpr;
+import soot.jimple.DoubleConstant;
+import soot.jimple.Expr;
+import soot.jimple.FloatConstant;
+import soot.jimple.GotoStmt;
+import soot.jimple.IdentityStmt;
+import soot.jimple.IfStmt;
+import soot.jimple.InstanceFieldRef;
+import soot.jimple.IntConstant;
+import soot.jimple.Jimple;
+import soot.jimple.JimpleBody;
+import soot.jimple.LongConstant;
+import soot.jimple.LookupSwitchStmt;
+import soot.jimple.NullConstant;
+import soot.jimple.StaticFieldRef;
+import soot.jimple.Stmt;
+import soot.jimple.StringConstant;
+import soot.jimple.TableSwitchStmt;
+import soot.options.Options;
+import soot.tagkit.BytecodeOffsetTag;
+import soot.tagkit.LineNumberTag;
+import soot.tagkit.Tag;
+import soot.util.ArraySet;
+import soot.util.Chain;
 
 /** A Control Flow Graph.
  * @author Clark Verbrugge
@@ -52,7 +109,7 @@ public class CFG {
      */
     BasicBlock cfg;
 
-    Chain units;
+    Chain<Unit> units;
     JimpleBody listBody;
 
     Map<Instruction, Stmt> instructionToFirstStmt;
@@ -89,32 +146,18 @@ public class CFG {
 
 	// printBBs();
 	// printBBCFGSucc();
-
-	cfg.beginCode = true;
-
+	
 	m.cfg = this;
 
-	if(cfg != null)
+	if(cfg != null) {
+		cfg.beginCode = true;
 	    firstInstruction = cfg.head;
+	}
 	else
 	    firstInstruction = null;
 
 	// calculate complexity metrics
     if (soot.jbco.Main.metrics) complexity();
-    
-    /*	
-	if (m.code_attr != null)
-	{
-	    for (int i=0; i<m.code_attr.attributes.length; i++)
-	    {
-		if (m.code_attr.attributes[i] 
-		    instanceof LineNumberTable_attribute)
-		{
-		    G.v().out.print(m.code_attr.attributes[i]);
-		}
-	    }
-	}
-	*/
     }
 
     public static HashMap<SootMethod, int[]> methodsToVEM = new HashMap<SootMethod, int[]>();
@@ -851,7 +894,7 @@ public class CFG {
    {
         this.bootstrap_methods_attribute = bootstrap_methods_attribute;
 
-        Chain units = listBody.getUnits();
+        Chain<Unit> units = listBody.getUnits();
 
         this.listBody = listBody;
         this.units = units;
@@ -864,9 +907,9 @@ public class CFG {
         //TypeArray.setClassManager(cm);
         //TypeStack.setClassManager(cm);
 
-        Set initialLocals = new ArraySet();
+        Set<Local> initialLocals = new ArraySet<Local>();
 
-        List parameterTypes = jmethod.getParameterTypes();
+        List<Type> parameterTypes = jmethod.getParameterTypes();
 
         // Initialize nameToLocal which is an index*Type->Local map, which is used
         // to determine local in bytecode references.
@@ -877,7 +920,6 @@ public class CFG {
 
             Util.v().bodySetup(la,lt,constant_pool);
             
-            Type thisType = RefType.v(jmethod.getDeclaringClass().getName());
             boolean isStatic = Modifier.isStatic(jmethod.getModifiers());
 
             int currentLocalIndex = 0;
@@ -895,13 +937,13 @@ public class CFG {
 
             // Initialize parameters
             {
-                Iterator typeIt = parameterTypes.iterator();
+                Iterator<Type> typeIt = parameterTypes.iterator();
                 int argCount = 0;
 
                 while(typeIt.hasNext())
                 {
                     Local local = Util.v().getLocalForParameter(listBody, currentLocalIndex);
-                    Type type = (Type) typeIt.next();
+                    Type type = typeIt.next();
                     initialLocals.add(local);
 
                     units.add(Jimple.v().newIdentityStmt(local, Jimple.v().newParameterRef(type, argCount)));
@@ -971,7 +1013,7 @@ public class CFG {
     void jimplify(cp_info constant_pool[],int this_class)
     {
         Code_attribute codeAttribute = method.locate_code_attribute();
-        Set<Instruction> handlerInstructions = new ArraySet();
+        Set<Instruction> handlerInstructions = new ArraySet<Instruction>();
 
         Map<Instruction, SootClass> handlerInstructionToException = new HashMap<Instruction, SootClass>();
         Map<Instruction, TypeStack> instructionToTypeStack;
@@ -1183,39 +1225,6 @@ public class CFG {
             }
         }
 
-        // Print out instructions + their localArray + typeStack
-        {
-            Instruction ins = firstInstruction;
-
-     //       G.v().out.println();
-
-            while(ins != null)
-            {
-                TypeStack typeStack = instructionToTypeStack.get(ins);
-                // TypeArray typeArray = (TypeArray) instructionToLocalArray.get(ins);
-/*
-                G.v().out.println("[TypeArray]");
-                typeArray.print(G.v().out);
-                G.v().out.println();
-
-                G.v().out.println("[TypeStack]");
-                typeStack.print(G.v().out);
-                G.v().out.println();
-
-                G.v().out.println(ins.toString());
-*/
-
-                ins = ins.next;
-/*
-
-                G.v().out.println();
-                G.v().out.println();
-*/
-
-            }
-        }
-
-
         // G.v().out.println("Producing Jimple code...");
 
         // Jimplify each statement
@@ -1352,7 +1361,7 @@ public class CFG {
 
 			// changed to account for catch blocks which are also part of normal control flow
             //units.insertBefore(newTarget, firstTargetStmt);			
-            ((PatchingChain)units).insertBeforeNoRedirect(newTarget, firstTargetStmt);
+            ((PatchingChain<Unit>)units).insertBeforeNoRedirect(newTarget, firstTargetStmt);
 
 			targetToHandler.put(firstTargetStmt, newTarget);
             if (units.getFirst()!=newTarget) {
@@ -3248,7 +3257,7 @@ public class CFG {
          case ByteCode.MULTIANEWARRAY:
          {
                int bdims = (((Instruction_Multianewarray)ins).dims);
-               List dims = new ArrayList();
+               List<Value> dims = new ArrayList<Value>();
 
                for (int j=0; j < bdims; j++)
                   dims.add(Util.v().getLocalForStackOp(listBody, typeStack,
@@ -4104,18 +4113,20 @@ public class CFG {
             int lowIndex = ((Instruction_Tableswitch)ins).low,
                 highIndex = ((Instruction_Tableswitch)ins).high;
 
+            int npairs = highIndex - lowIndex + 1;
+            
             stmt = Jimple.v().newTableSwitchStmt(
                     Util.v().getLocalForStackOp(listBody, typeStack, typeStack.topIndex()),
                     lowIndex,
                     highIndex,
-                    Arrays.asList(new FutureStmt[highIndex - lowIndex + 1]),
+                    Arrays.asList(new FutureStmt[npairs]),
                     new FutureStmt());
             break;
          }
 
          case ByteCode.LOOKUPSWITCH:
          {
-            List matches = new ArrayList();
+            List<IntConstant> matches = new ArrayList<IntConstant>();
             int npairs = ((Instruction_Lookupswitch)ins).npairs;
 
             for (int j = 0; j < npairs; j++)
@@ -4271,7 +4282,7 @@ public class CFG {
             args = cp_info.countParams(constant_pool,iv_info.name_and_type_index);
              
 			SootMethodRef bootstrapMethodRef;
-			List bootstrapArgs = new LinkedList();
+			List<Value> bootstrapArgs = new LinkedList<Value>();
 			{
 				short[] bootstrapMethodTable = bootstrap_methods_attribute.method_handles;
 				short methodSigIndex = bootstrapMethodTable[iv_info.bootstrap_method_index];
@@ -4301,14 +4312,14 @@ public class CFG {
 
         	 SootClass bclass = cm.getSootClass(SootClass.INVOKEDYNAMIC_DUMMY_CLASS_NAME);
         	 
-        	 List parameterTypes;
+        	 List<Type> parameterTypes;
         	 Type returnType;
 
         	 // Generate parameters & returnType & parameterTypes
         	 {
         		 Type[] types = Util.v().jimpleTypesOfFieldOrMethodDescriptor(methodDescriptor);
 
-        		 parameterTypes = new ArrayList();
+        		 parameterTypes = new ArrayList<Type>();
 
         		 for(int k = 0; k < types.length - 1; k++)
         		 {
@@ -4613,13 +4624,13 @@ public class CFG {
 
 		SootClass bclass = cm.getSootClass(className);
 
-		List parameterTypes;
+		List<Type> parameterTypes;
 		Type returnType;
 		// Generate parameters & returnType & parameterTypes
 		{
 		    Type[] types = Util.v().jimpleTypesOfFieldOrMethodDescriptor(methodDescriptor);
 
-		    parameterTypes = new ArrayList();
+		    parameterTypes = new ArrayList<Type> ();
 
 		    for(int k = 0; k < types.length - 1; k++)
 		    {

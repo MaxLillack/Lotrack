@@ -5,26 +5,25 @@
 // Author: Alexandre Bartel
 //
 // This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 2.1 of the License, or
 // (at your option) any later version.
 //
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// GNU Lesser General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
+// You should have received a copy of the GNU Lesser General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 //
 
 package soot.dexpler;
 
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.Stack;
 
 import soot.ArrayType;
 import soot.Body;
@@ -42,11 +41,8 @@ import soot.jimple.IdentityStmt;
 import soot.jimple.InvokeExpr;
 import soot.jimple.NewArrayExpr;
 import soot.jimple.Stmt;
-import soot.toolkits.graph.ExceptionalUnitGraph;
 import soot.toolkits.scalar.LocalDefs;
 import soot.toolkits.scalar.LocalUses;
-import soot.toolkits.scalar.SimpleLocalUses;
-import soot.toolkits.scalar.SmartLocalDefs;
 import soot.toolkits.scalar.UnitValueBoxPair;
 
 public abstract class DexTransformer extends BodyTransformer {
@@ -67,38 +63,38 @@ public abstract class DexTransformer extends BodyTransformer {
 	protected List<Unit> collectDefinitionsWithAliases(Local l,
 			LocalDefs localDefs, LocalUses localUses, Body body) {
 		Set<Local> seenLocals = new HashSet<Local>();
-		Stack<Local> newLocals = new Stack<Local>();
-		List<Unit> defs = new LinkedList<Unit>();
-		newLocals.push(l);
+		List<Local> newLocals = new ArrayList<Local>();
+		List<Unit> defs = new ArrayList<Unit>();
+		newLocals.add(l);
+		seenLocals.add(l);
 
-		while (!newLocals.empty()) {
-			Local local = newLocals.pop();
+		while (!newLocals.isEmpty()) {
+			Local local = newLocals.remove(0);
 			Debug.printDbg("[null local] ", local);
-			if (seenLocals.contains(local))
-				continue;
-			for (Unit u : collectDefinitions(local, localDefs, body)) {
+			for (Unit u : collectDefinitions(local, localDefs)) {
 				if (u instanceof AssignStmt) {
 					Value r = ((AssignStmt) u).getRightOp();
-					if (r instanceof Local && !seenLocals.contains((Local) r))
-						newLocals.push((Local) r);
+					if (r instanceof Local
+							&& seenLocals.add((Local) r))
+						newLocals.add((Local) r);
 				}
 				defs.add(u);
 				//
-				List<UnitValueBoxPair> usesOf = (List<UnitValueBoxPair>) localUses
-						.getUsesOf(u);
+				List<UnitValueBoxPair> usesOf = localUses.getUsesOf(u);
 				for (UnitValueBoxPair pair : usesOf) {
 					Unit unit = pair.getUnit();
 					if (unit instanceof AssignStmt) {
-						Value right = ((AssignStmt) unit).getRightOp();
-						Value left = ((AssignStmt) unit).getLeftOp();
-						if (right == local && left instanceof Local
-								&& !seenLocals.contains((Local) left))
-							newLocals.push((Local) left);
+						AssignStmt assignStmt = ((AssignStmt) unit);
+						Value right = assignStmt.getRightOp();
+						Value left = assignStmt.getLeftOp();
+						if (right == local
+								&& left instanceof Local
+								&& seenLocals.add((Local) left))
+							newLocals.add((Local) left);
 					}
 				}
 				//
 			}
-			seenLocals.add(local);
 		}
 		return defs;
 	}
@@ -113,26 +109,12 @@ public abstract class DexTransformer extends BodyTransformer {
 	 * @param body
 	 *            the body that contains the local
 	 */
-	private List<Unit> collectDefinitions(Local l, LocalDefs localDefs,
-			Body body) {
-		List<Unit> defs = new LinkedList<Unit>();
-		for (Unit u : body.getUnits()) {
-			List<Unit> defsOf = localDefs.getDefsOfAt(l, u);
-			if (defsOf != null)
-				defs.addAll(defsOf);
-		}
-		for (Unit u : defs) {
-			Debug.printDbg("[add def] ", u);
-		}
-		return defs;
+	private List<Unit> collectDefinitions(Local l, LocalDefs localDefs) {
+		return localDefs.getDefsOf(l);
 	}
 
-	protected Type findArrayType(ExceptionalUnitGraph g,
-			SmartLocalDefs localDefs, SimpleLocalUses localUses,
+	protected Type findArrayType(LocalDefs localDefs,
 			Stmt arrayStmt, int depth, Set<Unit> alreadyVisitedDefs) {
-		if (depth > 20)
-			System.out.println("x");
-
 		ArrayRef aRef = null;
 		if (arrayStmt.containsArrayRef()) {
 			aRef = arrayStmt.getArrayRef();
@@ -144,20 +126,17 @@ public abstract class DexTransformer extends BodyTransformer {
 				AssignStmt stmt = (AssignStmt) arrayStmt;
 				aBase = (Local) stmt.getRightOp();
 			} else {
-				System.out.println("ERROR: not an assign statement: "
+				throw new RuntimeException("ERROR: not an assign statement: "
 						+ arrayStmt);
-				System.exit(-1);
 			}
 		} else {
 			aBase = (Local) aRef.getBase();
 		}
 
 		List<Unit> defsOfaBaseList = localDefs.getDefsOfAt(aBase, arrayStmt);
-		if (defsOfaBaseList == null || defsOfaBaseList.size() == 0) {
-			System.out
-					.println("ERROR: no def statement found for array base local "
+		if (defsOfaBaseList == null || defsOfaBaseList.isEmpty()) {
+			throw new RuntimeException("ERROR: no def statement found for array base local "
 							+ arrayStmt);
-			System.exit(-1);
 		}
 
 		// We should find an answer only by processing the first item of the
@@ -195,7 +174,7 @@ public abstract class DexTransformer extends BodyTransformer {
 																			// ar.getType())
 																			// {
 						System.out.println("second round from stmt: " + stmt);
-						Type t = findArrayType(g, localDefs, localUses, stmt,
+						Type t = findArrayType(localDefs, stmt,
 								++depth, newVisitedDefs); // TODO: which type should be
 											// returned?
 						if (t instanceof ArrayType) {
@@ -232,7 +211,11 @@ public abstract class DexTransformer extends BodyTransformer {
 					}
 				} else if (r instanceof CastExpr) {
 					Type t = (((CastExpr) r).getCastType());
-					Debug.printDbg("atype cast: ", t);
+					Debug.printDbg("atype cast: ", t);					
+					if (t instanceof ArrayType) {
+						ArrayType at = (ArrayType) t;
+						t = at.getArrayElementType();
+					}
 					if (depth == 0) {
 						aType = t;
 						break;
@@ -242,6 +225,10 @@ public abstract class DexTransformer extends BodyTransformer {
 				} else if (r instanceof InvokeExpr) {
 					Type t = ((InvokeExpr) r).getMethodRef().returnType();
 					Debug.printDbg("atype invoke: ", t);
+					if (t instanceof ArrayType) {
+						ArrayType at = (ArrayType) t;
+						t = at.getArrayElementType();
+					}
 					if (depth == 0) {
 						aType = t;
 						break;
@@ -252,7 +239,7 @@ public abstract class DexTransformer extends BodyTransformer {
 				// information associated with the alias.
 				} else if (r instanceof Local) {
 					Debug.printDbg("atype alias: ", stmt);
-					Type t = findArrayType(g, localDefs, localUses, stmt,
+					Type t = findArrayType(localDefs, stmt,
 							++depth, newVisitedDefs);
 					if (depth == 0) {
 						aType = t;
@@ -285,9 +272,8 @@ public abstract class DexTransformer extends BodyTransformer {
 
 			if (aType != null)
 			    break;
-
 		} // loop
-
+		
 		if (depth == 0 && aType == null)
 			throw new RuntimeException(
 					"ERROR: could not find type of array from statement '"

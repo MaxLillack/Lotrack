@@ -20,17 +20,18 @@ import soot.UnitBox;
 import soot.Value;
 import soot.jimple.Stmt;
 import soot.toolkits.exceptions.UnitThrowAnalysis;
+import soot.toolkits.graph.BriefUnitGraph;
 import soot.toolkits.graph.DirectedGraph;
 import soot.toolkits.graph.ExceptionalUnitGraph;
 
-import com.google.common.base.Predicate;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.Iterables;
 
 
 public abstract class AbstractJimpleBasedICFG implements BiDiInterproceduralCFG<Unit,SootMethod> {
-
+	
+	protected final boolean enableExceptions;
+	
 	@DontSynchronize("written by single thread; read afterwards")
 	protected final Map<Unit,Body> unitToOwner = new HashMap<Unit,Body>();
 	
@@ -54,24 +55,39 @@ public abstract class AbstractJimpleBasedICFG implements BiDiInterproceduralCFG<
 	protected final LoadingCache<SootMethod,Set<Unit>> methodToCallsFromWithin = IDESolver.DEFAULT_CACHE_BUILDER.build( new CacheLoader<SootMethod,Set<Unit>>() {
 					@Override
 					public Set<Unit> load(SootMethod m) throws Exception {
-						Set<Unit> res = new LinkedHashSet<Unit>();
+						Set<Unit> res = null;
 						for(Unit u: m.getActiveBody().getUnits()) {
-							if(isCallStmt(u))
+							if(isCallStmt(u)) {
+								if (res == null)
+									res = new LinkedHashSet<Unit>();
 								res.add(u);
+							}
 						}
-						return res;
+						return res == null ? Collections.<Unit>emptySet() : res;
 					}
 				});
+	
+	public AbstractJimpleBasedICFG() {
+		this(true);
+	}
 
+	public AbstractJimpleBasedICFG(boolean enableExceptions) {
+		this.enableExceptions = enableExceptions;
+	}
+	
 	@Override
 	public SootMethod getMethodOf(Unit u) {
-		assert unitToOwner.containsKey(u);
-		return unitToOwner.get(u).getMethod();
+		assert unitToOwner.containsKey(u) : "Statement " + u
+				+ " not in unit-to-owner mapping";
+		Body b = unitToOwner.get(u);
+		return b == null ? null : b.getMethod();
 	}
 
 	@Override
 	public List<Unit> getSuccsOf(Unit u) {
 		Body body = unitToOwner.get(u);
+		if (body == null)
+			return Collections.emptyList();
 		DirectedGraph<Unit> unitGraph = getOrCreateUnitGraph(body);
 		return unitGraph.getSuccsOf(u);
 	}
@@ -86,7 +102,9 @@ public abstract class AbstractJimpleBasedICFG implements BiDiInterproceduralCFG<
 	}
 
 	protected DirectedGraph<Unit> makeGraph(Body body) {
-		return new ExceptionalUnitGraph(body, UnitThrowAnalysis.v() ,true);
+		return enableExceptions
+				? new ExceptionalUnitGraph(body, UnitThrowAnalysis.v() ,true)
+				: new BriefUnitGraph(body);
 	}
 
 	@Override
@@ -115,7 +133,7 @@ public abstract class AbstractJimpleBasedICFG implements BiDiInterproceduralCFG<
 	public boolean isBranchTarget(Unit u, Unit succ) {
 		assert getSuccsOf(u).contains(succ);
 		if(!u.branches()) return false;
-		for (UnitBox ub : succ.getUnitBoxes()) {
+		for (UnitBox ub : u.getUnitBoxes()) {
 			if(ub.getUnit()==succ) return true;
 		}
 		return false;
@@ -159,24 +177,6 @@ public abstract class AbstractJimpleBasedICFG implements BiDiInterproceduralCFG<
 		}
 		return res;
 	}
-	
-	@Override
-	public Set<Unit> allNodes()
-	{
-		return new LinkedHashSet<Unit>(unitToOwner.keySet());
-	}
-	
-	@Override
-	public Iterable<Unit> allNonStartNodes()
-	{
-		return Iterables.<Unit>filter(unitToOwner.keySet(), new Predicate<Unit>() {
-			@Override
-			public boolean apply(Unit u) {
-				return !isStartPoint(u);
-			}
-		});
-	}
-	
 
 	@Override
 	public Collection<Unit> getReturnSitesOfCallAt(Unit u) {

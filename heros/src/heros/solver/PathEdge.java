@@ -24,7 +24,7 @@ public class PathEdge<N,D> {
 
 	protected final N target;
 	protected final D dSource, dTarget;
-	protected final int hashCode;
+//	protected final int hashCode;
 
 	/**
 	 * @param dSource The fact at the source.
@@ -37,12 +37,8 @@ public class PathEdge<N,D> {
 		this.dSource = dSource;
 		this.dTarget = dTarget;
 		
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((dSource == null) ? 0 : dSource.hashCode());
-		result = prime * result + ((dTarget == null) ? 0 : dTarget.hashCode());
-		result = prime * result + ((target == null) ? 0 : target.hashCode());
-		this.hashCode = result;
+
+//		this.hashCode = result;
 	}
 	
 	public N getTarget() {
@@ -59,7 +55,12 @@ public class PathEdge<N,D> {
 
 	@Override
 	public int hashCode() {
-		return hashCode;
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((dSource == null) ? 0 : dSource.hashCode());
+		result = prime * result + ((dTarget == null) ? 0 : dTarget.hashCode());
+		result = prime * result + ((target == null) ? 0 : target.hashCode());
+		return result;
 	}
 
 	@Override

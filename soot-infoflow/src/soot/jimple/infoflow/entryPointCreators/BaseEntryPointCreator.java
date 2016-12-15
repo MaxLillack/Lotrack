@@ -138,7 +138,7 @@ public abstract class BaseEntryPointCreator implements IEntryPointCreator {
 		assert gen != null : "Local generator was null";
 		
 		InvokeExpr invokeExpr;
-		List<Object> args = new LinkedList<Object>();
+		List<Value> args = new LinkedList<Value>();
 		if(currentMethod.getParameterCount()>0){
 			for(Type tp :currentMethod.getParameterTypes()){
 				args.add(getValueForType(body, gen, tp, new HashSet<SootClass>(), parentClasses));

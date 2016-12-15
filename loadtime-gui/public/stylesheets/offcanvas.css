@@ -3,7 +3,7 @@
  * --------------------------------------------------
  */
 html {
-  overflow-x: hidden; /* Prevent scroll on narrow devices */
+//  overflow-x: hidden; /* Prevent scroll on narrow devices */
 }
 body {
   padding-top: 70px;
@@ -72,6 +72,6 @@ footer {
 
 @media (min-width: 1200px) {
   .container {
-    width: 1500px;
+    width: 1700px;
   }
 }

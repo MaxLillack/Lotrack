@@ -27,11 +27,12 @@
 
 package soot.jimple.toolkits.scalar;
 import soot.options.*;
-
 import soot.*;
 import soot.toolkits.scalar.*;
 import soot.jimple.*;
+
 import java.util.*;
+
 import soot.toolkits.graph.*;
 
 /** Does constant propagation and folding. 
@@ -42,55 +43,55 @@ public class ConstantPropagatorAndFolder extends BodyTransformer
     public ConstantPropagatorAndFolder( Singletons.Global g ) {}
     public static ConstantPropagatorAndFolder v() { return G.v().soot_jimple_toolkits_scalar_ConstantPropagatorAndFolder(); }
 
-    protected void internalTransform(Body b, String phaseName, Map options)
+    protected void internalTransform(Body b, String phaseName, Map<String,String> options)
     {
-        StmtBody stmtBody = (StmtBody)b;
         int numFolded = 0;
         int numPropagated = 0;
 
         if (Options.v().verbose())
-            G.v().out.println("[" + stmtBody.getMethod().getName() +
+            G.v().out.println("[" + b.getMethod().getName() +
                                "] Propagating and folding constants...");
 
-        ExceptionalUnitGraph unitGraph = new ExceptionalUnitGraph(stmtBody);
-        LocalDefs localDefs;
-        
-        localDefs = new SmartLocalDefs(unitGraph, new SimpleLiveLocals(unitGraph));
+        UnitGraph g = new ExceptionalUnitGraph(b);
+        LocalDefs localDefs = LocalDefs.Factory.newLocalDefs(g);
 
         // Perform a constant/local propagation pass.
-        Iterator stmtIt = (new PseudoTopologicalOrderer()).newList(unitGraph,false).iterator();
-
+        Orderer<Unit> orderer = new PseudoTopologicalOrderer<Unit>();
+        
         // go through each use box in each statement
-        while (stmtIt.hasNext()) {
-            Stmt stmt = (Stmt) stmtIt.next();
+        for (Unit u : orderer.newList(g, false)) {
 
             // propagation pass
-            Iterator useBoxIt = stmt.getUseBoxes().iterator();
-            ValueBox useBox;
-
-            while (useBoxIt.hasNext()) {
-                useBox = (ValueBox) useBoxIt.next();
-                if (useBox.getValue() instanceof Local) {
-                    Local local = (Local) useBox.getValue();
-                    List<Unit> defsOfUse = localDefs.getDefsOfAt(local, stmt);
+            for (ValueBox useBox : u.getUseBoxes()) {
+                Value value = useBox.getValue();
+                if (value instanceof Local) {
+                    Local local = (Local) value;
+                    List<Unit> defsOfUse = localDefs.getDefsOfAt(local, u);
                     if (defsOfUse.size() == 1) {
-                        DefinitionStmt defStmt =
-                            (DefinitionStmt) defsOfUse.get(0);
-                        if (defStmt.getRightOp() instanceof NumericConstant) {
-                            if (useBox.canContainValue(defStmt.getRightOp())) {
-                                useBox.setValue(defStmt.getRightOp());
+                        DefinitionStmt defStmt = (DefinitionStmt) defsOfUse.get(0);
+                        Value rhs = defStmt.getRightOp();
+                        if (rhs instanceof NumericConstant
+                        		|| rhs instanceof StringConstant
+                        		|| rhs instanceof NullConstant) {
+                            if (useBox.canContainValue(rhs)) {
+                                useBox.setValue(rhs);
                                 numPropagated++;
                             }
+                        }
+                        else if (rhs instanceof CastExpr) {
+                        	CastExpr ce = (CastExpr) rhs;
+                        	if (ce.getCastType() instanceof RefType
+                        			&& ce.getOp() instanceof NullConstant) {
+                                defStmt.getRightOpBox().setValue(NullConstant.v());
+                                numPropagated++;
+                        	}
                         }
                     }
                 }
             }
                 
             // folding pass
-            useBoxIt = stmt.getUseBoxes().iterator();
-
-            while (useBoxIt.hasNext()) {
-                useBox = (ValueBox) useBoxIt.next();
+            for (ValueBox useBox : u.getUseBoxes()) {
                 Value value = useBox.getValue();
                 if (!(value instanceof Constant)) {
                     if (Evaluator.isValueConstantValued(value)) {
@@ -106,7 +107,7 @@ public class ConstantPropagatorAndFolder extends BodyTransformer
         }
 
        if (Options.v().verbose())
-            G.v().out.println("[" + stmtBody.getMethod().getName() +
+            G.v().out.println("[" + b.getMethod().getName() +
                 "]     Propagated: " + numPropagated + ", Folded:  " + numFolded);
 
     } // optimizeConstants

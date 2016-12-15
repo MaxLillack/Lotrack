@@ -26,7 +26,6 @@
 package soot;
 
 import java.util.AbstractCollection;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,6 +36,7 @@ import soot.util.Chain;
  * and handles patching to deal with element insertions and removals.
  * This is done by calling Unit.redirectJumpsToThisTo at strategic
  * times. */
+@SuppressWarnings("serial")
 public class PatchingChain<E extends Unit> extends AbstractCollection<E> implements Chain<E> 
 {
     protected Chain<E> innerChain;
@@ -68,8 +68,8 @@ public class PatchingChain<E extends Unit> extends AbstractCollection<E> impleme
     /** Replaces <code>out</code> in the Chain by <code>in</code>. */
     public void swapWith(E out, E in)
     {
-        insertBefore(in, out);
-        remove(out);
+        innerChain.swapWith(out, in);
+        out.redirectJumpsToThisTo(in);
     }
 
     /** Inserts <code>toInsert</code> in the Chain after <code>point</code>. */
@@ -161,10 +161,10 @@ public class PatchingChain<E extends Unit> extends AbstractCollection<E> impleme
 
         if(contains(obj))
         {
-            Unit successor;
+            Unit successor = getSuccOf((E) obj);
+            if (successor == null)
+                successor = getPredOf((E) obj);
             
-            if((successor = getSuccOf((E) obj)) == null)
-                successor = getPredOf((E) obj); 
 		// Note that redirecting to the last unit in the method 
 		// like this is probably incorrect when dealing with a Trap.
 	        // I.e., let's say that the final unit in the method used to
@@ -284,4 +284,10 @@ public class PatchingChain<E extends Unit> extends AbstractCollection<E> impleme
 
     /** Returns the size of this Chain. */
     public int size(){return innerChain.size(); }
+    
+    @Override
+    /** Returns the number of times this chain has been modified. */
+    public long getModificationCount() {
+    	return innerChain.getModificationCount();
+    }
 }

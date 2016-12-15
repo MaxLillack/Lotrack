@@ -50,11 +50,12 @@ public class ReturnInstruction extends DexlibAbstractInstruction {
         setUnit(returnStmt);
         addTags(returnStmt);
         body.add(returnStmt);
-        this.body = body;
 		
         if (IDalvikTyper.ENABLE_DVKTYPER) {
-			Debug.printDbg(IDalvikTyper.DEBUG, "constraint: "+ returnStmt);
-          DalvikTyper.v().setType(returnStmt.getOpBox(), body.getBody().getMethod().getReturnType(), true);
+
+			Debug.printDbg(IDalvikTyper.DEBUG, "return constraint: " + returnStmt);
+			//DalvikTyper.v().addConstraint(returnStmt.getOpBox(), new ImmediateBox(Jimple.body.getBody().getMethod().getReturnType()));
+			DalvikTyper.v().setType(returnStmt.getOpBox(), body.getBody().getMethod().getReturnType(), true);
         }
     }
 }

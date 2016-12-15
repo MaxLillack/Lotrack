@@ -1,18 +1,17 @@
 package soot.toolkits.exceptions;
 
-import static org.junit.Assert.*;
-
-import org.junit.Test;
-import org.junit.Ignore;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.runner.RunWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import soot.AnySubType;
 import soot.ArrayType;
@@ -513,12 +512,8 @@ public class UnitThrowAnalysisTest {
                     IntType.v()),
                 IntConstant.v(0));
         Stmt s = Jimple.v().newLookupSwitchStmt(IntConstant.v(1),
-                Arrays.asList(new Value[] {
-                    IntConstant.v(1)
-                }),
-                Arrays.asList(new Unit[] {
-                    target
-                }),
+                Collections.singletonList(IntConstant.v(1)),
+                Collections.singletonList(target),
                 target);
         assertTrue(ExceptionTestUtility.sameMembers(utility.VM_ERRORS, Collections.EMPTY_SET,
                     unitAnalysis.mightThrow(s)));

@@ -6,3 +6,5 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-ClassPath: soot-infoflow.jar
 Require-Bundle: org.junit
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Import-Package: com.google.common.cache,
+ com.google.common.collect

@@ -183,12 +183,14 @@ public class AndroidEntryPointCreator extends BaseEntryPointCreator implements I
 		for (Entry<String, Set<String>> entry : classMap.entrySet())
 			Scene.v().forceResolve(entry.getKey(), SootClass.BODIES);
 		
+		
 		// Explicit calls to all clinit methods
         for(SootClass sootClass : Scene.v().getClasses())
         {
         	String className = sootClass.getName();
         	
-        	if(!className.startsWith("java.") && !className.startsWith("sun.") && !className.startsWith("android.")) {
+        	if(!Scene.v().isExcluded(sootClass) && !className.startsWith("java.") && !className.startsWith("sun.") && !className.startsWith("android.")) {
+        		
         		if(sootClass.declaresMethod("void <clinit>()")) {
         			SootMethod clinit = sootClass.getMethod("void <clinit>()");
 //		        	logger.info("SootClass {}", sootClass.getName());
@@ -202,7 +204,7 @@ public class AndroidEntryPointCreator extends BaseEntryPointCreator implements I
 		// monster, the onCreate() methods of content providers run even before
 		// the application object's onCreate() is called.
 		{
-			boolean hasContentProviders = false;
+//			boolean hasContentProviders = false;
 			JNopStmt beforeContentProvidersStmt = new JNopStmt();
 			body.getUnits().add(beforeContentProvidersStmt);
 			for(String className : classMap.keySet()) {
@@ -222,7 +224,7 @@ public class AndroidEntryPointCreator extends BaseEntryPointCreator implements I
 					buildMethodCall(findMethod(currentClass, AndroidEntryPointConstants.CONTENTPROVIDER_ONCREATE),
 							body, localVal, generator);
 					body.getUnits().add(thenStmt);
-					hasContentProviders = true;
+//					hasContentProviders = true;
 				}
 			}
 			// Jump back to the beginning of this section to overapproximate the

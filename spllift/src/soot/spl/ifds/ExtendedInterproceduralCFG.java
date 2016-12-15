@@ -114,11 +114,11 @@ public class ExtendedInterproceduralCFG implements BiDiInterproceduralCFG<Unit,S
 		return delegate.getMethodOf(n);
 	}
 
-	public Set<SootMethod> getCalleesOfCallAt(Unit n) {
+	public Collection<SootMethod> getCalleesOfCallAt(Unit n) {
 		return delegate.getCalleesOfCallAt(n);
 	}
 
-	public Set<Unit> getCallersOf(SootMethod m) {
+	public Collection<Unit> getCallersOf(SootMethod m) {
 		return delegate.getCallersOf(m);
 	}
 
@@ -169,17 +169,7 @@ public class ExtendedInterproceduralCFG implements BiDiInterproceduralCFG<Unit,S
 	public Set<Unit> allNonCallEndNodes() {
 		return delegate.allNonCallEndNodes();
 	}
-	
-	@Override
-	public Set<Unit> allNodes() {
-		return delegate.allNodes();
-	}
 
-	@Override
-	public Iterable<Unit> allNonStartNodes() {
-		return delegate.allNonStartNodes();
-	}
-	
 	@Override
 	public DirectedGraph<Unit> getOrCreateUnitGraph(SootMethod body) {
 		return delegate.getOrCreateUnitGraph(body);

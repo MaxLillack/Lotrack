@@ -1,0 +1,1 @@
+UnsatisfiedLinkError: Add path to z3 to path variable

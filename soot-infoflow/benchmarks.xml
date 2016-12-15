@@ -1,0 +1,11 @@
+<benchmark-results tstamp="2016-09-27T12:55:42.378+0200">
+
+	<testname classname="soot.jimple.infoflow.test.loadtime.LoadTimeTests" name="platypus"
+		 benchmark-rounds="1" warmup-rounds="0"
+		 round-avg="275.91" round-stddev="0"
+		 gc-avg="0" gc-stddev="0"
+		 gc-invocations="34" gc-time="10.744"
+		 benchmark-time-total="275.912" warmup-time-total="0"
+		 threads="1"/>
+
+</benchmark-results>

@@ -16,6 +16,7 @@ import heros.FlowFunctions;
 import heros.IFDSTabulationProblem;
 import heros.InterproceduralCFG;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,7 +47,7 @@ import java.util.concurrent.TimeUnit;
  * @param <M> see {@link IFDSSolver}
  * @param <I> see {@link IFDSSolver}
  */
-public class BiDiIFDSSolver<N, D extends LinkedNode<D>, M, I extends InterproceduralCFG<N, M>, SootValue> {
+public class BiDiIFDSSolver<N, D extends JoinHandlingNode<D>, M, I extends InterproceduralCFG<N, M>, SootValue> {
 
 	private final IFDSTabulationProblem<N, AbstractionWithSourceStmt, M, I> forwardProblem;
 	private final IFDSTabulationProblem<N, AbstractionWithSourceStmt, M, I> backwardProblem;
@@ -91,7 +92,7 @@ public class BiDiIFDSSolver<N, D extends LinkedNode<D>, M, I extends Interproced
 	/**
 	 * This is a modified IFDS solver that is capable of pausing and unpausing return-flow edges.
 	 */
-	protected class SingleDirectionSolver extends PathTrackingIFDSSolver<N, AbstractionWithSourceStmt, M, I, SootValue> {
+	protected class SingleDirectionSolver extends JoinHandlingNodesIFDSSolver<N, AbstractionWithSourceStmt, M, I> {
 		private final String debugName;
 		private SingleDirectionSolver otherSolver;
 		private Set<N> leakedSources = new HashSet<N>();
@@ -104,7 +105,7 @@ public class BiDiIFDSSolver<N, D extends LinkedNode<D>, M, I extends Interproced
 		}
 		
 		@Override
-		protected List<NewPathEdgeProcessingTask> processExit(PathEdge<N,AbstractionWithSourceStmt> edge, Set<N> joinPoints) {
+		protected List<NewPathEdgeProcessingTask> processExit(PathEdge<N,AbstractionWithSourceStmt> edge, Collection<N> joinPoints) {
 			//if an edge is originating from ZERO then to us this signifies an unbalanced return edge
 			if(edge.factAtSource().equals(zeroValue)) {
 				N sourceStmt = edge.factAtTarget().getSourceStmt();
@@ -184,7 +185,7 @@ public class BiDiIFDSSolver<N, D extends LinkedNode<D>, M, I extends Interproced
 	 * This is an augmented abstraction propagated by the {@link SingleDirectionSolver}. It associates with the
 	 * abstraction the source statement from which this fact originated. 
 	 */
-	public class AbstractionWithSourceStmt implements LinkedNode<AbstractionWithSourceStmt> {
+	public class AbstractionWithSourceStmt implements JoinHandlingNode<AbstractionWithSourceStmt> {
 
 		protected final D abstraction;
 		protected final N source;
@@ -243,8 +244,18 @@ public class BiDiIFDSSolver<N, D extends LinkedNode<D>, M, I extends Interproced
 		}
 
 		@Override
-		public void addNeighbor(AbstractionWithSourceStmt originalAbstraction) {
-			getAbstraction().addNeighbor(originalAbstraction.getAbstraction());
+		public void setCallingContext(AbstractionWithSourceStmt callingContext) {
+			abstraction.setCallingContext(callingContext.getAbstraction());
+		}
+
+		@Override
+		public boolean handleJoin(BiDiIFDSSolver<N, D, M, I, SootValue>.AbstractionWithSourceStmt joiningNode) {
+			return abstraction.handleJoin(joiningNode.getAbstraction());
+		}
+
+		@Override
+		public heros.solver.JoinHandlingNode.JoinKey createJoinKey() {
+			return new JoinKey(source, abstraction.createJoinKey());
 		}
 
 	}

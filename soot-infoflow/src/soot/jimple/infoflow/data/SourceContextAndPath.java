@@ -17,12 +17,12 @@ import soot.jimple.Stmt;
 public class SourceContextAndPath extends SourceContext implements Cloneable {
 	private final List<Stmt> path = new LinkedList<Stmt>();
 	
-	public SourceContextAndPath(Value value, Stmt stmt) {
-		super(value, stmt);
+	public SourceContextAndPath(AccessPath accessPath, Stmt stmt) {
+		super(accessPath, stmt);
 	}
 	
-	public SourceContextAndPath(Value value, Stmt stmt, Object userData) {
-		super(value, stmt, userData);
+	public SourceContextAndPath(AccessPath accessPath, Stmt stmt, Object userData) {
+		super(accessPath, stmt, userData);
 	}
 
 	public SourceContextAndPath(Abstraction symbolic) {
@@ -63,7 +63,7 @@ public class SourceContextAndPath extends SourceContext implements Cloneable {
 	public SourceContextAndPath clone() {
 		final SourceContextAndPath scap;
 		if (getSymbolic() == null)
-			scap = new SourceContextAndPath(getValue(), getStmt(), getUserData());
+			scap = new SourceContextAndPath(getAccessPath(), getStmt(), getUserData());
 		else
 			scap = new SourceContextAndPath(getSymbolic(), getUserData());
 		scap.path.addAll(this.path);

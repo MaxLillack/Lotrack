@@ -24,6 +24,7 @@
  */
 
 
+
 package soot.jimple;
 import soot.options.*;
 import soot.*;
@@ -32,8 +33,15 @@ import soot.tagkit.LineNumberTag;
 import soot.toolkits.graph.*;
 import soot.toolkits.scalar.*;
 import soot.util.*;
+
 import java.util.*;
+
 import soot.grimp.*;
+
+
+/*
+ * TODO This is the right JasminClass
+ */
 
 /** Methods for producing Jasmin code from Jimple. */
 public class JasminClass extends AbstractJasminClass
@@ -92,7 +100,7 @@ public class JasminClass extends AbstractJasminClass
         
         body.validate();
             
-        if(body == null)
+        //if(body == null)
             
         if(Options.v().time())
             Timers.v().buildJasminTimer.start();
@@ -116,8 +124,9 @@ public class JasminClass extends AbstractJasminClass
         if (!disablePeephole)
         {
             stmtGraph = new ExceptionalUnitGraph(body);
-            ld = new SmartLocalDefs(stmtGraph, new SimpleLiveLocals(stmtGraph));
-            lu = new SimpleLocalUses(stmtGraph, ld);
+            ld =  LocalDefs.Factory.newLocalDefs(stmtGraph);
+            lu = LocalUses.Factory.newLocalUses(body, ld);
+            
         }
 
         int stackLimitIndex = -1;
@@ -1301,8 +1310,8 @@ public class JasminClass extends AbstractJasminClass
                 emitValue(s.getKey());
                 emit("lookupswitch", -1);
 
-                List lookupValues = s.getLookupValues();
-                List targets = s.getTargets();
+                List<IntConstant> lookupValues = s.getLookupValues();
+                List<Unit> targets = s.getTargets();
 
                 for(int i = 0; i < lookupValues.size(); i++)
                     emit("  " + lookupValues.get(i) + " : " + unitToLabel.get(targets.get(i)));
@@ -1401,7 +1410,7 @@ public class JasminClass extends AbstractJasminClass
                 emitValue(s.getKey());
                 emit("tableswitch " + s.getLowIndex() + " ; high = " + s.getHighIndex(), -1);
 
-                List targets = s.getTargets();
+                List<Unit> targets = s.getTargets();
 
                 for(int i = 0; i < targets.size(); i++)
                     emit("  " + unitToLabel.get(targets.get(i)));
@@ -1928,17 +1937,7 @@ public class JasminClass extends AbstractJasminClass
                 else if(v.value == 1)
                     emit("dconst_1", 2);
                 else {
-                    String s = v.toString();
-                    
-                    if(s.equals("#Infinity"))
-                        s="+DoubleInfinity";
-                    
-                    if(s.equals("#-Infinity"))
-                        s="-DoubleInfinity";
-                    
-                    if(s.equals("#NaN"))
-                        s="+DoubleNaN";
-                        
+                    String s = doubleToString(v);
                     emit("ldc2_w " + s, 2);
                 }
             }
@@ -1952,20 +1951,10 @@ public class JasminClass extends AbstractJasminClass
                 else if(v.value == 2)
                     emit("fconst_2", 1);
                 else {
-                    String s = v.toString();
-                    
-                    if(s.equals("#InfinityF"))
-                        s="+FloatInfinity";
-                    if(s.equals("#-InfinityF"))
-                        s="-FloatInfinity";
-                        
-                    if(s.equals("#NaNF"))
-                        s="+FloatNaN";
-                    
+                    String s = floatToString(v);
                     emit("ldc " + s, 1);
                 }
             }
-
 
             public void caseInstanceFieldRef(InstanceFieldRef v)
             {
@@ -2416,12 +2405,11 @@ public class JasminClass extends AbstractJasminClass
 
             public void caseNewMultiArrayExpr(NewMultiArrayExpr v)
             {
-                List sizes = v.getSizes();
+                for (Value val : v.getSizes())
+                    emitValue(val);
 
-                for(int i = 0; i < sizes.size(); i++)
-                    emitValue((Value) sizes.get(i));
-
-                emit("multianewarray " + jasminDescriptorOf(v.getBaseType()) + " " + sizes.size(), -sizes.size() + 1);
+                int size = v.getSizeCount();
+                emit("multianewarray " + jasminDescriptorOf(v.getBaseType()) + " " + size, -size + 1);
             }
 
             public void caseNewExpr(NewExpr v)

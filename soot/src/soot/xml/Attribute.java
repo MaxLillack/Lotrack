@@ -19,10 +19,19 @@
 
 package soot.xml;
 
-import java.util.*;
-import java.io.*;
-import soot.tagkit.*;
-import soot.util.*;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Iterator;
+
+import soot.tagkit.ColorTag;
+import soot.tagkit.Host;
+import soot.tagkit.JimpleLineNumberTag;
+import soot.tagkit.LineNumberTag;
+import soot.tagkit.LinkTag;
+import soot.tagkit.PositionTag;
+import soot.tagkit.SourceLnPosTag;
+import soot.tagkit.StringTag;
+import soot.tagkit.Tag;
 
 public class Attribute {
     
@@ -196,17 +205,17 @@ public class Attribute {
     }
 	
     private String  formatForXML(String in) {
-		in = StringTools.replaceAll(in, "<", "&lt;");
-		in = StringTools.replaceAll(in, ">", "&gt;");
-		in = StringTools.replaceAll(in, "&", "&amp;");
-        in = StringTools.replaceAll(in, "\"", "&quot;");
+		in = in.replaceAll("<", "&lt;");
+		in = in.replaceAll(">", "&gt;");
+		in = in.replaceAll("&", "&amp;");
+        in = in.replaceAll("\"", "&quot;");
 		return in;
 	}
 	
     private int getJavaLnOfHost(Host h){
-		Iterator it = h.getTags().iterator();
+		Iterator<Tag> it = h.getTags().iterator();
 		while (it.hasNext()){
-			Tag t = (Tag)it.next();
+			Tag t = it.next();
 			if (t instanceof SourceLnPosTag) {
 				return ((SourceLnPosTag)t).startLn();
 			}
@@ -218,9 +227,9 @@ public class Attribute {
 	}
 	
 	private int getJimpleLnOfHost(Host h){
-		Iterator it = h.getTags().iterator();
+		Iterator<Tag> it = h.getTags().iterator();
 		while (it.hasNext()){
-			Tag t = (Tag)it.next();
+			Tag t = it.next();
 			if (t instanceof JimpleLineNumberTag) {
 				return ((JimpleLineNumberTag)t).getStartLineNumber();
 			}

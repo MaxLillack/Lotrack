@@ -52,6 +52,7 @@ import soot.Unit;
 import soot.Value;
 import soot.javaToJimple.LocalGenerator;
 import soot.jimple.AssignStmt;
+import soot.jimple.DynamicInvokeExpr;
 import soot.jimple.FieldRef;
 import soot.jimple.InstanceInvokeExpr;
 import soot.jimple.InvokeExpr;
@@ -126,8 +127,9 @@ public final class OnFlyCallGraphBuilder
 				}
 			} else {
 				for (SootClass cls : Scene.v().dynamicClasses()) {
-					if( cls.declaresMethod(sigInit) ) {
-						addEdge( source, s, cls.getMethod(sigInit), Kind.NEWINSTANCE );
+					SootMethod sm = cls.getMethodUnsafe(sigInit);
+					if( sm != null ) {
+						addEdge( source, s, sm, Kind.NEWINSTANCE );
 					}
 				}
 
@@ -240,8 +242,8 @@ public final class OnFlyCallGraphBuilder
 			} else {
 				for (String clsName : classNames) {
 					SootClass cls = Scene.v().getSootClass(clsName);
-					if( cls.declaresMethod(sigInit) ) {
-						SootMethod constructor = cls.getMethod(sigInit);
+					SootMethod constructor = cls.getMethodUnsafe(sigInit);
+					if( constructor != null ) {
 						addEdge( container, newInstanceInvokeStmt, constructor, Kind.REFL_CLASS_NEWINSTANCE );
 					}
 				}
@@ -439,18 +441,20 @@ public final class OnFlyCallGraphBuilder
             	SootMethod target = VirtualCalls.v().resolveSpecial( 
                             (SpecialInvokeExpr) site.iie(),
                             site.subSig(),
-                            site.container() );
+                            site.container(),
+                            appOnly );
             	//if the call target resides in a phantom class then "target" will be null;
             	//simply do not add the target in that case
             	if(target!=null) {
-            		targetsQueue.add( target );            		
-            	} 
+            		targetsQueue.add( target );
+            	}
             } else {
                 VirtualCalls.v().resolve( type,
                         receiver.getType(),
                         site.subSig(),
                         site.container(), 
-                        targetsQueue );
+                        targetsQueue,
+                        appOnly);
             }
             while(targets.hasNext()) {
                 SootMethod target = (SootMethod) targets.next();
@@ -529,8 +533,8 @@ public final class OnFlyCallGraphBuilder
         findReceivers(m, b);
     }
     private void findReceivers(SootMethod m, Body b) {
-        for( Iterator<Unit> sIt = b.getUnits().iterator(); sIt.hasNext(); ) {
-            final Stmt s = (Stmt) sIt.next();
+        for( final Unit u : b.getUnits() ) {
+            final Stmt s = (Stmt) u;
             if (s.containsInvokeExpr()) {
                 InvokeExpr ie = s.getInvokeExpr();
 
@@ -545,7 +549,12 @@ public final class OnFlyCallGraphBuilder
                         addVirtualCallSite( s, m, receiver, iie, sigRun,
                                 Kind.THREAD );
                     }
-                    else if( subSig == sigExecutorExecute  ) {
+                    else if( subSig == sigExecutorExecute 
+                    		|| subSig == sigHandlerPost
+                    		|| subSig == sigHandlerPostAtFrontOfQueue
+                    		|| subSig == sigHandlerPostAtTime
+                    		|| subSig == sigHandlerPostAtTimeWithToken
+                    		|| subSig == sigHandlerPostDelayed ) {
                     	if (iie.getArgCount() > 0) {
                     		Value runnable = iie.getArg(0);
                     		if (runnable instanceof Local)
@@ -557,6 +566,9 @@ public final class OnFlyCallGraphBuilder
                         addVirtualCallSite( s, m, receiver, iie, sigDoInBackground,
                                 Kind.ASYNCTASK );
                     }
+                } else if (ie instanceof DynamicInvokeExpr) {
+                	if(options.verbose())
+                		G.v().out.println("WARNING: InvokeDynamic to "+ie+" not resolved during call-graph construction.");
                 } else {
                 	SootMethod tgt = ie.getMethod();
                 	if(tgt!=null) {
@@ -590,8 +602,8 @@ public final class OnFlyCallGraphBuilder
             handleInit(source, scl);
         }
         Body b = source.retrieveActiveBody();
-        for( Iterator<Unit> sIt = b.getUnits().iterator(); sIt.hasNext(); ) {
-            final Stmt s = (Stmt) sIt.next();
+        for (Unit u : b.getUnits()) {
+            final Stmt s = (Stmt) u;
             if( s.containsInvokeExpr() ) {
                 InvokeExpr ie = s.getInvokeExpr();
                 final String methRefSig = ie.getMethodRef().getSignature();
@@ -691,8 +703,9 @@ public final class OnFlyCallGraphBuilder
     }
 
     private void addEdge(  SootMethod src, Stmt stmt, SootClass cls, NumberedString methodSubSig, Kind kind ) {
-        if( cls.declaresMethod( methodSubSig ) ) {
-            addEdge( src, stmt, cls.getMethod( methodSubSig ), kind );
+    	SootMethod sm = cls.getMethodUnsafe( methodSubSig );
+        if( sm != null ) {
+            addEdge( src, stmt, sm, kind );
         }
     }
     private void addEdge( SootMethod src, Stmt stmt, SootMethod tgt ) {
@@ -710,8 +723,21 @@ public final class OnFlyCallGraphBuilder
         findOrAdd( "void run()" );
     protected final NumberedString sigExecute = Scene.v().getSubSigNumberer().
             findOrAdd( "android.os.AsyncTask execute(java.lang.Object[])" );
+    
     protected final NumberedString sigExecutorExecute = Scene.v().getSubSigNumberer().
             findOrAdd( "void execute(java.lang.Runnable)" );
+    
+    protected final NumberedString sigHandlerPost = Scene.v().getSubSigNumberer().
+            findOrAdd( "boolean post(java.lang.Runnable)" );
+    protected final NumberedString sigHandlerPostAtFrontOfQueue = Scene.v().getSubSigNumberer().
+            findOrAdd( "boolean postAtFrontOfQueue(java.lang.Runnable)" );
+    protected final NumberedString sigHandlerPostAtTime = Scene.v().getSubSigNumberer().
+            findOrAdd( "boolean postAtTime(java.lang.Runnable,long)" );
+    protected final NumberedString sigHandlerPostAtTimeWithToken = Scene.v().getSubSigNumberer().
+            findOrAdd( "boolean postAtTime(java.lang.Runnable,java.lang.Object,long)" );
+    protected final NumberedString sigHandlerPostDelayed = Scene.v().getSubSigNumberer().
+            findOrAdd( "boolean postDelayed(java.lang.Runnable,long)" );
+    
     protected final NumberedString sigObjRun = Scene.v().getSubSigNumberer().
         findOrAdd( "java.lang.Object run()" );
     protected final NumberedString sigDoInBackground = Scene.v().getSubSigNumberer().

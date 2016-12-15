@@ -17,17 +17,25 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.UnknownHostException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -44,6 +52,7 @@ import soot.jimple.infoflow.LoadTimeInfoflow;
 import soot.jimple.infoflow.android.MaxSetupApplication;
 import soot.jimple.infoflow.loadtime.ConstraintShare;
 import soot.jimple.infoflow.loadtime.MongoLoader;
+import soot.jimple.infoflow.loadtime.TestHelper;
 
 public class RealApps {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -76,6 +85,11 @@ public class RealApps {
 			throw new RuntimeException("DroidBench dir not set");		
 		System.out.println("Loading DroidBench from " + droidBenchDir);
 		
+		if(!new File(droidBenchDir + File.separator + fileName).exists())
+		{
+			throw new IllegalArgumentException("file " + fileName + " not found.");
+		}
+		
 		MaxSetupApplication setupApplication = new MaxSetupApplication(androidJars,
 				droidBenchDir + File.separator + fileName);
 		setupApplication.setTaintWrapperFile("EasyTaintWrapperSource.txt");
@@ -84,7 +98,7 @@ public class RealApps {
 		return setupApplication.runInfoflow(configName);
 	}
 	
-	@Test
+	@Test//(timeout=10000000)
 	public void VLC1() throws IOException {
 		runAndCheck("VLC");
 	}
@@ -111,8 +125,16 @@ public class RealApps {
 			logger.info("No source for {}", collectionName);
 		}
 		
-		mongo.saveResults(infoflow, collectionName, basePath, offset);
+		mongo.saveResults(infoflow, collectionName, basePath);
 		
+		boolean enableDetailedLog = false;
+		
+		if(enableDetailedLog)
+		{
+			helper.detailedDBLog(infoflow.getSplResults(), collectionName, infoflow);
+		} else {
+			System.out.println("Detailed log disabled");
+		}
 		mongo.logEnd(collectionName);
 		
 		checkResults(conf, collectionName);
@@ -129,7 +151,7 @@ public class RealApps {
 	}
 	
 	
-	@Test(timeout=300000)
+	@Test(timeout=1500000)
 	public void Avare() throws IOException {
 		runAndCheck("Avare");
 	}
@@ -155,7 +177,7 @@ public class RealApps {
 		runAndCheck("OsmAnd");
 	}
 	
-	@Test(timeout=300000)
+	@Test(timeout=1000000)
 	public void Tomdroid() throws IOException {
 		runAndCheck("Tomdroid");
 	}
@@ -294,7 +316,7 @@ public class RealApps {
 				String expectedConstraint = constraintElement.getString("constraint");
 				
 				String constraint = mongo.getConstraint(collectionName, className, jimpleLine);
-				Assert.assertEquals("Line " + jimpleLine, expectedConstraint, constraint);
+				Assert.assertEquals("Line " + jimpleLine + " Class " + className, expectedConstraint, constraint);
 			}
 		}
 	}
@@ -405,6 +427,22 @@ public class RealApps {
 		return collectionNames;
 	}
 	
+	private Collection<String> evaluationJavaCollections()
+	{
+		Collection<String> collectionNames = new LinkedList<String>();
+		collectionNames.add("platypus");
+		collectionNames.add("kafkaDispatch");
+		collectionNames.add("data_consumer");
+		collectionNames.add("andsync_server");
+		collectionNames.add("adligo");
+		collectionNames.add("remoterengine");
+		collectionNames.add("MGrid");
+		collectionNames.add("jmxetric");
+		collectionNames.add("WarGameofThrones");
+		return collectionNames;
+	}
+	
+	
 	@Test
 	@Ignore
 	public void removeEvaluationResults()
@@ -416,30 +454,197 @@ public class RealApps {
 	}
 	
 	@Test
-	public void getEvaluationResults()
+	public void showEvaluationMissing()
+	{
+		int doneCount = 0;
+		List<String> missing = new ArrayList<>();
+		for (String collectionName : evaluationCollections()) {
+			if(mongo.isDone(collectionName)) {
+				doneCount++;
+			} else {
+				missing.add(collectionName);
+			}
+		}
+		System.out.println("App Evaluation Statistics");
+		System.out.println("Done " + doneCount + " of " + evaluationCollections().size());
+		System.out.println("Missing: ");
+		for(String name : missing)
+		{
+			System.out.println(name);
+		}
+	}
+	
+	@Test
+	public void testConstraintAnalysisTerms()
+	{
+		Map<Set<String>, Integer> termCombinationCount = new HashMap<>();
+		for (String collectionName : evaluationCollections()) {
+			for(Set<String> termCombination : mongo.constraintAnalysisTerms(collectionName)) {
+				termCombinationCount.merge(termCombination, 1, (oldValue, newValue) -> oldValue + newValue);
+			}
+		}
+		
+		termCombinationCount.entrySet().stream()
+			.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+			.forEach(entry -> System.out.println(StringUtils.join(entry.getKey(), ", ") + ": " + entry.getValue()));
+		
+		// top interacting features. for each option, select how often they are part of interactions
+		Map<String, Integer> interactionOrder2 = new HashMap<>();
+		Map<String, Integer> interactionOrder3 = new HashMap<>();
+		Map<String, Integer> interactionOrderHigher = new HashMap<>();
+		Map<String, Integer> totalInteractions = new HashMap<>();
+		for(Entry<Set<String>, Integer> entry : termCombinationCount.entrySet())
+		{
+			for(String option : entry.getKey())
+			{
+				if(entry.getKey().size() > 1) {
+					totalInteractions.merge(option, 1, (oldValue, newValue) -> oldValue + newValue);
+				}
+				if(entry.getKey().size() == 2) {
+					interactionOrder2.merge(option, 1, (oldValue, newValue) -> oldValue + newValue);
+				} else if(entry.getKey().size() == 3) {
+					interactionOrder3.merge(option, 1, (oldValue, newValue) -> oldValue + newValue);
+				} else if(entry.getKey().size() > 3) {
+					interactionOrderHigher.merge(option, 1, (oldValue, newValue) -> oldValue + newValue);
+				}
+			}
+		}
+		
+		System.out.println("Top 5 options interacting on order 1:");
+		
+		totalInteractions.entrySet().stream()
+			.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+			.limit(5)
+			.forEach(entry -> System.out.println(entry.getKey() + ": " + interactionOrder2.get(entry.getKey())));
+		System.out.println("Top 5 options interacting on order 2:");
+		totalInteractions.entrySet().stream()
+			.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+			.limit(5)
+			.forEach(entry -> System.out.println(entry.getKey() + ": " + interactionOrder3.get(entry.getKey())));
+		System.out.println("Top 5 options interacting on higher order:");
+		totalInteractions.entrySet().stream()
+			.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+			.limit(5)
+			.forEach(entry -> System.out.println(entry.getKey() + ": " + interactionOrderHigher.get(entry.getKey())));
+	}
+	
+	@Test
+	public void getRuntimes() throws ParseException
+	{
+		for (String collectionName : evaluationCollections()) {
+			long runtime = mongo.getRuntime(collectionName);
+			System.out.println(collectionName + "," + runtime);
+		}
+	}
+	
+	@Test
+	public void testConstraintTermType()
+	{
+		Map<String, Integer> aggregated = new HashMap<>();
+		
+		for (String collectionName : evaluationCollections()) {
+			Map<String, Integer> types = mongo.constraintAnalysis(collectionName);
+			// preciseOnly
+			// mix
+			// impreciseOnly
+			// total
+			
+			aggregated.merge("preciseOnly", types.get("preciseOnly"), (oldValue, newValue) -> oldValue + newValue);
+			aggregated.merge("mix", types.get("mix"), (oldValue, newValue) -> oldValue + newValue);
+			aggregated.merge("impreciseOnly", types.get("impreciseOnly"), (oldValue, newValue) -> oldValue + newValue);
+			aggregated.merge("total", types.get("total"), (oldValue, newValue) -> oldValue + newValue);
+		}
+		
+		
+		System.out.println("Aggregated Android ConstraintAnalysis: " 
+				+ "preicise only " + aggregated.get("preciseOnly")
+				+ ", mix " + aggregated.get("mix") 
+				+ ", imprecise only " + aggregated.get("impreciseOnly") 
+				+ ", total " + aggregated.get("total"));
+		
+	}
+	
+	@Test
+	public void testConstraintAnalysisInteractionShare()
+	{
+		Map<Integer,Integer> interactions = new HashMap<>();
+		
+		for (String collectionName : evaluationCollections()) {
+			Map<Integer,Integer> collectionInteractions = mongo.constraintAnalysisInteractions(collectionName);
+			
+			for(Map.Entry<Integer,Integer> entry : collectionInteractions.entrySet()) {
+				interactions.merge((entry.getKey() > 3 ? 4 : entry.getKey()), entry.getValue(), (oldValue, newValue) -> oldValue + newValue);
+			}
+		}
+		
+		// Manually calculated share values in the paper
+		interactions.entrySet().stream()
+			.sorted(Map.Entry.comparingByKey(Comparator.reverseOrder()))
+			.forEach(entry -> System.out.println(entry.getKey() + ": " + entry.getValue()));		
+	}
+	
+	@Test
+	public void getOptionsPerApp()
+	{
+		Map<String, Integer> optionCount = new HashMap<>();
+		for (String collectionName : evaluationCollections()) {
+			for(String option : mongo.usedOptions(collectionName)) {
+				optionCount.merge(option, 1, (oldValue, newValue) -> oldValue + newValue);
+			}
+		}
+		
+		optionCount.entrySet().stream().sorted(Map.Entry.comparingByValue(Comparator.reverseOrder())).forEach(entry -> System.out.println(entry.getKey() + ": " + entry.getValue()));
+	}
+	
+	@Test
+	public void getEvaluationResults() throws Exception
 	{	
 		Writer writer = null;
+		
+		NumberFormat nf = NumberFormat.getNumberInstance(Locale.US);
+		DecimalFormat formatter = (DecimalFormat)nf;
+		formatter.applyPattern("#0.00");
+		
 		try {
 		    writer = new BufferedWriter(new OutputStreamWriter(
-		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\Evaluation\\quries\\constraintShares.csv"), "utf-8"));
+		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\PaperJ\\Evaluation\\quries\\constraintShares.csv"), "utf-8"));
 		    writer.write("Name" + "," + "Total" + "," + "Share\n");
 		    for (String collectionName : evaluationCollections()) {
 				ConstraintShare share = mongo.getConstraintShare(collectionName);
 				if(share == null) {
 					writer.write(collectionName + "," + "," + "\n");
 				} else {
-					writer.write(collectionName + "," + share.total + "," + share.share + "\n");
+					writer.write(collectionName + "," + share.total + "," + formatter.format(share.share) + "\n");
 				}
 			}
 		} catch (IOException ex) {
 		  
 		} finally {
-		   try {writer.close();} catch (Exception ex) {}
+		   try {writer.close();} catch (Exception ex) { throw ex; }
 		}
 		
 		try {
 		    writer = new BufferedWriter(new OutputStreamWriter(
-		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\Evaluation\\quries\\jimpleLineCount.csv"), "utf-8"));
+		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\PaperJ\\Evaluation\\quries\\constraintSharesJava.csv"), "utf-8"));
+		    writer.write("Name" + "," + "Total" + "," + "Share\n");
+		    for (String collectionName : evaluationJavaCollections()) {
+				ConstraintShare share = mongo.getConstraintShare(collectionName);
+				if(share == null) {
+					writer.write(collectionName + "," + "," + "\n");
+				} else {
+					writer.write(collectionName + "," + share.total + "," + formatter.format(share.share) + "\n");
+				}
+			}
+		} catch (IOException ex) {
+		  
+		} finally {
+		   try {writer.close();} catch (Exception ex) { throw ex; }
+		}
+		
+		
+		try {
+		    writer = new BufferedWriter(new OutputStreamWriter(
+		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\PaperJ\\Evaluation\\quries\\jimpleLineCount.csv"), "utf-8"));
 		    writer.write("Name" + "," + "JimpleLines\n");
 		    for (String collectionName : evaluationCollections()) {
 				int jimpleLineCount = mongo.getJimpleLineCount(collectionName);
@@ -448,12 +653,12 @@ public class RealApps {
 		} catch (IOException ex) {
 		  
 		} finally {
-		   try {writer.close();} catch (Exception ex) {}
+		   try {writer.close();} catch (Exception ex) { throw ex;}
 		}
 		
 		try {
 		    writer = new BufferedWriter(new OutputStreamWriter(
-		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\Evaluation\\quries\\constraints.csv"), "utf-8"));
+		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\PaperJ\\Evaluation\\quries\\constraints.csv"), "utf-8"));
 		    writer.write("Constraint" + "," + "Count\n");
 		    
 		    Map<String, Long> constraints = new HashMap<String, Long>();
@@ -479,12 +684,12 @@ public class RealApps {
 		} catch (IOException ex) {
 		  
 		} finally {
-		   try {writer.close();} catch (Exception ex) {}
+		   try {writer.close();} catch (Exception ex) { throw ex;}
 		}
 		
 		try {
 		    writer = new BufferedWriter(new OutputStreamWriter(
-		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\Evaluation\\quries\\constraintPerApp.csv"), "utf-8"));
+		          new FileOutputStream("C:\\Users\\Max\\Dropbox\\Uni\\AmAVaG\\Texte\\Tracking Configuration Options\\PaperJ\\Evaluation\\quries\\constraintPerApp.csv"), "utf-8"));
 		    writer.write("Constraint" + "," + "Count\n");
 		    
 		    Map<String, Integer> constraints = new HashMap<String, Integer>();
@@ -508,7 +713,7 @@ public class RealApps {
 		    }
 		    
 		} catch (IOException ex) {
-		  
+			 throw ex;
 		} finally {
 		   try {writer.close();} catch (Exception ex) {}
 		}

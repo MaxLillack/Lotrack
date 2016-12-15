@@ -12,19 +12,30 @@ package soot.jimple.infoflow.solver;
 
 import heros.solver.IDESolver;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import soot.Local;
 import soot.Scene;
 import soot.SootField;
 import soot.SootMethod;
 import soot.Unit;
 import soot.Value;
+import soot.ValueBox;
+import soot.jimple.AssignStmt;
+import soot.jimple.FieldRef;
 import soot.jimple.IfStmt;
 import soot.jimple.InvokeExpr;
+import soot.jimple.StaticFieldRef;
 import soot.jimple.Stmt;
 import soot.jimple.infoflow.util.ConcurrentHashSet;
+import soot.jimple.toolkits.callgraph.Edge;
 import soot.jimple.toolkits.ide.icfg.BiDiInterproceduralCFG;
 import soot.jimple.toolkits.ide.icfg.JimpleBasedInterproceduralCFG;
 import soot.jimple.toolkits.pointer.RWSet;
@@ -42,7 +53,20 @@ import com.google.common.cache.LoadingCache;
  * @author Eric Bodden
  */
 public class InfoflowCFG implements IInfoflowCFG {
-
+	
+	private static enum StaticFieldUse {
+		Unknown,
+		Unused,
+		Read,
+		Write,
+		ReadWrite
+	}
+	
+	protected final Map<SootMethod, Map<SootField, StaticFieldUse>> staticFieldUses =
+			new ConcurrentHashMap<SootMethod, Map<SootField,StaticFieldUse>>();
+	protected final Map<SootMethod, Boolean> methodSideEffects =
+			new ConcurrentHashMap<SootMethod, Boolean>();
+	
 	protected final BiDiInterproceduralCFG<Unit, SootMethod> delegate; 
 	
 	protected final LoadingCache<Unit,UnitContainer> unitToPostdominator =
@@ -60,10 +84,42 @@ public class InfoflowCFG implements IInfoflowCFG {
 				}
 			});
 	
+	
+	protected final LoadingCache<SootMethod,Local[]> methodToUsedLocals =
+			IDESolver.DEFAULT_CACHE_BUILDER.build( new CacheLoader<SootMethod,Local[]>() {
+				@Override
+				public Local[] load(SootMethod method) throws Exception {
+					if (!method.isConcrete() || !method.hasActiveBody())
+						return new Local[0];
+					
+					List<Local> lcs = new ArrayList<Local>(method.getParameterCount() + (method.isStatic() ? 0 : 1));
+					
+					for (Unit u : method.getActiveBody().getUnits())
+						useBox : for (ValueBox vb : u.getUseBoxes()) {
+							// Check for parameters
+							for (int i = 0; i < method.getParameterCount(); i++) {
+								if (method.getActiveBody().getParameterLocal(i) == vb.getValue()) {
+									lcs.add((Local) vb.getValue());
+									continue useBox;
+								}
+							}
+						}
+					
+					// Add the "this" local
+					if (!method.isStatic())
+						lcs.add(method.getActiveBody().getThisLocal());
+					
+					return lcs.toArray(new Local[lcs.size()]);
+				}
+			});
+	
 	protected final SideEffectAnalysis sideEffectAnalysis;
 	
 	public InfoflowCFG() {
-		this(new JimpleBasedInterproceduralCFG());
+		
+		
+		
+		this(new JimpleBasedInterproceduralCFG(false));
 	}
 	
 	public InfoflowCFG(BiDiInterproceduralCFG<Unit,SootMethod> delegate) {
@@ -159,22 +215,8 @@ public class InfoflowCFG implements IInfoflowCFG {
 	public Set<Unit> allNonCallStartNodes() {
 		return delegate.allNonCallStartNodes();
 	}
-	
-	public Set<Unit> allNodes()
-	{
-		return delegate.allNodes();
-	}
-	
-	public Iterable<Unit> allNonStartNodes()
-	{
-		return delegate.allNonStartNodes();
-	}
 
-	public Set<SootMethod> getCalleesOfCallAt(Unit u) {
-		return delegate.getCalleesOfCallAt(u);
-	}
-
-	public Set<Unit> getCallersOf(SootMethod m) {
+	public Collection<Unit> getCallersOf(SootMethod m) {
 		return delegate.getCallersOf(m);
 	}
 
@@ -220,6 +262,169 @@ public class InfoflowCFG implements IInfoflowCFG {
 	}
 
 	@Override
+	public boolean isStaticFieldRead(SootMethod method, SootField variable) {
+		return isStaticFieldUsed(method, variable, new HashSet<SootMethod>(), true);
+	}
+	
+	@Override
+	public boolean isStaticFieldUsed(SootMethod method, SootField variable) {
+		return isStaticFieldUsed(method, variable, new HashSet<SootMethod>(), false);
+	}
+	
+	private boolean isStaticFieldUsed(SootMethod method, SootField variable,
+			Set<SootMethod> runList, boolean readOnly) {
+		// Without a body, we cannot say much
+		if (!method.hasActiveBody())
+			return false;
+		
+		// Do not process the same method twice
+		if (!runList.add(method))
+			return false;
+		
+		// Do we already have an entry?
+		Map<SootField, StaticFieldUse> entry = staticFieldUses.get(method);
+		if (entry != null) {
+			StaticFieldUse b = entry.get(variable);
+			if (b != null && b != StaticFieldUse.Unknown) {
+				if (readOnly)
+					return b == StaticFieldUse.Read || b == StaticFieldUse.ReadWrite;
+				else
+					return b != StaticFieldUse.Unused;
+			}
+		}
+		
+		// Scan for references to this variable
+		for (Unit u : method.getActiveBody().getUnits()) {
+			if (u instanceof AssignStmt) {
+				AssignStmt assign = (AssignStmt) u;
+				
+				if (assign.getLeftOp() instanceof StaticFieldRef) {
+					SootField sf = ((StaticFieldRef) assign.getLeftOp()).getField();
+					registerStaticVariableUse(method, sf, StaticFieldUse.Write);
+					if (!readOnly && variable.equals(sf))
+						return true;
+				}
+				
+				if (assign.getRightOp() instanceof StaticFieldRef) {
+					SootField sf = ((StaticFieldRef) assign.getRightOp()).getField();
+					registerStaticVariableUse(method, sf, StaticFieldUse.Read);
+					if (variable.equals(sf))
+						return true;
+				}
+			}
+			
+			if (((Stmt) u).containsInvokeExpr())
+				for (Iterator<Edge> edgeIt = Scene.v().getCallGraph().edgesOutOf(u); edgeIt.hasNext(); ) {
+					Edge e = edgeIt.next();
+					if (isStaticFieldUsed(e.getTgt().method(), variable, runList, readOnly))
+						return true;
+				}
+		}
+		
+		// Variable is not read
+		registerStaticVariableUse(method, variable, StaticFieldUse.Unused);
+		return false;
+	}
+
+	private void registerStaticVariableUse(SootMethod method,
+			SootField variable, StaticFieldUse fieldUse) {
+		Map<SootField, StaticFieldUse> entry = staticFieldUses.get(method);
+		StaticFieldUse oldUse;
+		synchronized (staticFieldUses) {
+			if (entry == null) {
+				entry = new ConcurrentHashMap<SootField, StaticFieldUse>();
+				staticFieldUses.put(method, entry);
+				entry.put(variable, fieldUse);
+				return;
+			}
+			
+			oldUse = entry.get(variable);
+			if (oldUse == null) {
+				entry.put(variable, fieldUse);
+				return;
+			}
+		}
+		
+		// This part is monotonic, so no need for synchronization
+		StaticFieldUse newUse;
+		switch (oldUse) {
+			case Unknown :
+			case Unused :
+			case ReadWrite :
+				newUse = fieldUse;
+				break;
+			case Read :
+				newUse = (fieldUse == StaticFieldUse.Read) ? oldUse : StaticFieldUse.ReadWrite;
+				break;
+			case Write :
+				newUse = (fieldUse == StaticFieldUse.Write) ? oldUse : StaticFieldUse.ReadWrite;
+				break;
+			default:
+				throw new RuntimeException("Invalid field use");
+			}
+		entry.put(variable, newUse);
+	}
+
+	@Override
+	public boolean hasSideEffects(SootMethod method) {
+		return hasSideEffects(method, new HashSet<SootMethod>());
+	}
+	
+	private boolean hasSideEffects(SootMethod method, Set<SootMethod> runList) {
+		// Without a body, we cannot say much
+		if (!method.hasActiveBody())
+			return false;
+		
+		// Do not process the same method twice
+		if (!runList.add(method))
+			return false;
+		
+		// Do we already have an entry?
+		Boolean hasSideEffects = methodSideEffects.get(method);
+		if (hasSideEffects != null)
+			return hasSideEffects;
+		
+		// Scan for references to this variable
+		for (Unit u : method.getActiveBody().getUnits()) {
+			if (u instanceof AssignStmt) {
+				AssignStmt assign = (AssignStmt) u;
+				
+				if (assign.getLeftOp() instanceof FieldRef) {
+					methodSideEffects.put(method, true);
+					return true;
+				}
+			}
+			
+			if (((Stmt) u).containsInvokeExpr())
+				for (Iterator<Edge> edgeIt = Scene.v().getCallGraph().edgesOutOf(u); edgeIt.hasNext(); ) {
+					Edge e = edgeIt.next();
+					if (hasSideEffects(e.getTgt().method(), runList))
+						return true;
+				}
+		}
+		
+		// Variable is not read
+		methodSideEffects.put(method, false);
+		return false;
+	}
+	
+	@Override
+	public void notifyMethodChanged(SootMethod m) {
+		if (delegate instanceof JimpleBasedInterproceduralCFG)
+			((JimpleBasedInterproceduralCFG) delegate).initializeUnitToOwner(m);
+	}
+	
+	@Override
+	public boolean methodReadsValue(SootMethod m, Value v) {
+		Local[] reads = methodToUsedLocals.getUnchecked(m);
+		if (reads != null)
+			for (Local l : reads)
+				if (l == v)
+					return true;
+		return false;
+	}
+	
+	@Override
 	public Unit getPostDominator(Unit stmt) {
 		// TODO Temp - testing load time
 		return null;
@@ -228,6 +433,11 @@ public class InfoflowCFG implements IInfoflowCFG {
 	@Override
 	public boolean isSpecialStatementType(Unit stmt) {
 		return (stmt instanceof IfStmt || stmt instanceof InvokeExpr);
+	}
+
+	@Override
+	public Collection<SootMethod> getCalleesOfCallAt(Unit n) {
+		return delegate.getCalleesOfCallAt(n);
 	}
 }
 

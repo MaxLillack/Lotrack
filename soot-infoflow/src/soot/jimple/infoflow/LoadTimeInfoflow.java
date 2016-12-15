@@ -1,6 +1,7 @@
 package soot.jimple.infoflow;
 
 import heros.solver.CountingThreadPoolExecutor;
+import heros.solver.TopologicalSorter;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -11,6 +12,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -20,10 +22,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.Table;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigValue;
 
 import soot.MethodOrMethodContext;
 import soot.PackManager;
@@ -34,9 +40,9 @@ import soot.SootClass;
 import soot.SootMethod;
 import soot.Transform;
 import soot.Unit;
+import soot.jimple.Stmt;
 import soot.jimple.infoflow.IInfoflow.CallgraphAlgorithm;
 import soot.jimple.infoflow.InfoflowResults.SinkInfo;
-import soot.jimple.infoflow.InfoflowResults.SourceInfo;
 import soot.jimple.infoflow.aliasing.Aliasing;
 import soot.jimple.infoflow.aliasing.FlowSensitiveAliasStrategy;
 import soot.jimple.infoflow.aliasing.IAliasingStrategy;
@@ -51,6 +57,7 @@ import soot.jimple.infoflow.ipc.IIPCManager;
 import soot.jimple.infoflow.loadtime.LoadTimeHelperImpl;
 import soot.jimple.infoflow.loadtime.LoadTimeSourceSinkManager;
 import soot.jimple.infoflow.loadtime.MongoLoader;
+import soot.jimple.infoflow.loadtime.SootTopologicalSorter;
 import soot.jimple.infoflow.problems.BackwardsInfoflowProblem;
 import soot.jimple.infoflow.problems.InfoflowProblem;
 import soot.jimple.infoflow.problems.LoadTimeInfoflowProblem;
@@ -58,10 +65,12 @@ import soot.jimple.infoflow.solver.BackwardsInfoflowCFG;
 import soot.jimple.infoflow.solver.IInfoflowCFG;
 import soot.jimple.infoflow.solver.fastSolver.InfoflowSolver;
 import soot.jimple.infoflow.source.ISourceSinkManager;
+import soot.jimple.infoflow.source.SourceInfo;
 import soot.jimple.infoflow.util.SootMethodRepresentationParser;
 import soot.jimple.toolkits.ide.icfg.BiDiInterproceduralCFG;
 import soot.options.Options;
 import soot.spl.ifds.Constraint;
+import soot.spl.ifds.IConstraint;
 import soot.spl.ifds.SPLIFDSSolver;
 
 
@@ -71,9 +80,9 @@ public class LoadTimeInfoflow extends Infoflow {
     protected boolean enableImplicitFlows = true;
 	private static boolean debug = true;
 	private IInfoflowConfig sootConfig;
-	private HashMap<SootClass, Integer> currentJimpleLn = new HashMap<SootClass, Integer>();
-	public Table<Unit, Abstraction, Constraint<String>> splResults;
+	public Table<Unit, Abstraction, IConstraint> splResults;
 	public SPLIFDSSolver<Abstraction,AccessPath> splSolver;
+	private LoadTimeInfoflowProblem forwardProblem;
 
 	/**
 	 * Creates a new instance of the InfoFlow class for analyzing plain Java code without any references to APKs or the Android SDK.
@@ -241,6 +250,9 @@ public class LoadTimeInfoflow extends Infoflow {
 					Options.v().setPhaseOption("cg.spark", "vta:true");
 				Options.v().setPhaseOption("cg.spark", "string-constants:true");
 				break;
+			case CHA:
+				Options.v().setPhaseOption("cg.cha", "on");
+				break;
 			case RTA:
 				Options.v().setPhaseOption("cg.spark", "on");
 				Options.v().setPhaseOption("cg.spark", "rta:true");
@@ -278,6 +290,8 @@ public class LoadTimeInfoflow extends Infoflow {
 		
 		Options.v().setPhaseOption("tag.ln", "on");
 		
+		Options.v().set_keep_offset(true);
+		
 		//at the end of setting: load user settings:
 		if (sootConfig != null)
 			sootConfig.setSootOptions(Options.v());
@@ -299,6 +313,59 @@ public class LoadTimeInfoflow extends Infoflow {
 			return;
 		}
 	}	
+	
+	public void onlySaveJimple(String appPath, String libPath, IEntryPointCreator entryPointCreator, List<String> entryPoints, LoadTimeSourceSinkManager sourceSinkManager) {
+		// Run the preprocessors
+        for (Transform tr : preProcessors)
+            tr.apply();
+   
+		initializeSoot(appPath, libPath, SootMethodRepresentationParser.v().parseClassNames(entryPoints, false).keySet());
+		Scene.v().setEntryPoints(Collections.singletonList(entryPointCreator.createDummyMain(entryPoints)));
+		ipcManager.updateJimpleForICC();
+		
+		// We explicitly select the packs we want to run for performance reasons
+		if (callgraphAlgorithm != CallgraphAlgorithm.OnDemand) {
+	        PackManager.v().getPack("wjpp").apply();
+	        PackManager.v().getPack("cg").apply();
+		}
+		
+		iCfg = icfgFactory.buildBiDirICFG(callgraphAlgorithm);
+	     
+        if (callgraphAlgorithm != CallgraphAlgorithm.OnDemand)
+        	logger.info("Callgraph has {} edges", Scene.v().getCallGraph().size());
+        iCfg = icfgFactory.buildBiDirICFG(callgraphAlgorithm);
+        
+        List<SootMethod> methods = new ArrayList<SootMethod>(getMethodsForSeeds(iCfg));
+        
+//        saveJimpleFiles(appPath, methods);
+        List<Integer> usedFeatures = collectSources(appPath, methods, sourceSinkManager);
+      
+        Config featureConfig = sourceSinkManager.getFeatureConfig();
+        
+        // Build generic map from index to feature name
+        Map<Integer, String> featureNamesMap = new HashMap<>();
+		for(Entry<String, ConfigValue> entry : featureConfig.root().entrySet())
+		{
+			Config conf = featureConfig.getConfig(entry.getKey());
+			
+			if(usedFeatures.contains(conf.getInt("index"))) {
+				String featureName = entry.getKey();
+				featureNamesMap.put(conf.getInt("index"), featureName);
+			}
+		}
+		
+		// Create new list of features names similar to list of used features by index
+		List<String> featureNames = new ArrayList<String>(usedFeatures.size());
+		for(int featureIndex : usedFeatures) {
+			featureNames.add(featureNamesMap.get(featureIndex));
+		}
+        
+        
+        // save in DB
+		try (MongoLoader mongoLoder = new MongoLoader()) {	
+			mongoLoder.saveUsedFeatures(appPath, FilenameUtils.getName(appPath), featureNames);
+		}
+	}
 	
 	
 	private void runAnalysis(final ISourceSinkManager sourcesSinks, final Set<String> additionalSeeds, String appPath) {
@@ -337,42 +404,23 @@ public class LoadTimeInfoflow extends Infoflow {
 		}
 		
 		//InfoflowProblem forwardProblem  = new InfoflowProblem(iCfg, sourcesSinks, aliasingStrategy);
-		LoadTimeInfoflowProblem forwardProblem  = new LoadTimeInfoflowProblem(iCfg, sourcesSinks,aliasingStrategy);
+		forwardProblem  = new LoadTimeInfoflowProblem(iCfg, sourcesSinks,aliasingStrategy);
 		
         logger.info("Looking for sources.");
-        Map<String, StringBuilder> classes = new HashMap<String, StringBuilder>();
-        
-		
+
         List<SootMethod> methods = new ArrayList<SootMethod>(getMethodsForSeeds(iCfg));
         
-        // Sort jimple methods, to get fixed line numbers
-        Collections.sort(methods, new Comparator<SootMethod>() {
-			@Override
-			public int compare(SootMethod m1, SootMethod m2) {
-				return m1.getName().compareTo(m2.getName());
-			}
-		});
+
+		// In Debug mode, we collect the Jimple bodies for
+		// writing them to disk later       
+        if (debug) {
+        	System.out.println("Start saving Jimple files.");
+            saveJimpleFiles(appPath, methods);
+            System.out.println("Finished saving Jimple files.");
+        }
         
 		for (SootMethod m : methods) {
 			if (m.hasActiveBody()) {
-				// In Debug mode, we collect the Jimple bodies for
-				// writing them to disk later
-				if (debug) {
-					//Printer.v().setJimpleLnNum(1);
-					if (classes.containsKey(m.getDeclaringClass().getName())) {
-						Printer.v().setJimpleLnNum(currentJimpleLn.get(m.getDeclaringClass()));
-						classes.put(m.getDeclaringClass().getName(), classes.get(m.getDeclaringClass().getName()).append(
-								m.getActiveBody().toString()));
-						currentJimpleLn.put(m.getDeclaringClass(), Printer.v().getJimpleLnNum());
-					} else {
-						currentJimpleLn.put(m.getDeclaringClass(), 1);
-						Printer.v().setJimpleLnNum(currentJimpleLn.get(m.getDeclaringClass()));
-						classes.put(m.getDeclaringClass().getName(), new StringBuilder(m.getActiveBody().toString()));
-					}
-					
-					currentJimpleLn.put(m.getDeclaringClass(), Printer.v().getJimpleLnNum());
-				}
-
 				if(m.getName().equals("dummyMainMethod")) {
 					PatchingChain<Unit> units = m.getActiveBody().getUnits();
 					forwardProblem.addInitialSeeds(units.getFirst(), Collections.singleton(forwardProblem.zeroValue()));
@@ -381,17 +429,13 @@ public class LoadTimeInfoflow extends Infoflow {
     		}
     		//logger.info("Source lookup done, found {} sources.", forwardProblem.getInitialSeeds().size());
         }
+		
 		if (!forwardProblem.hasInitialSeeds()){
 			logger.error("No sources found, aborting analysis");
 			return;
 		}
-		try (MongoLoader mongoLoder = new MongoLoader()) {	
-    		// In Debug mode, we write the Jimple files to disk
-    		if (debug){
-    			mongoLoder.saveJimpleFiles(classes, appPath);
-    			//writeJimpleFiles(classes);
-    		}
-		}
+		
+
 		// We optionally also allow additional seeds to be specified
 		if (additionalSeeds != null)
 			for (String meth : additionalSeeds) {
@@ -455,7 +499,8 @@ public class LoadTimeInfoflow extends Infoflow {
 		
 		logger.info("Creating SPL solver...");
 		
-		LoadTimeHelperImpl helper = new LoadTimeHelperImpl(sourcesSinks.getFeatureConfig(), new Aliasing(aliasingStrategy));
+		LoadTimeHelperImpl helper = new LoadTimeHelperImpl(sourcesSinks.getFeatureConfig(), new Aliasing(aliasingStrategy), getiCfg());
+		
 		splSolver = new SPLIFDSSolver<Abstraction, AccessPath>(forwardProblem, helper);	
 		
 		logger.info("Starting SPL solver...");
@@ -490,8 +535,72 @@ public class LoadTimeInfoflow extends Infoflow {
 		
 		splResults = splSolver.val;
 	}
+
+	public List<Integer> collectSources(String appPath, List<SootMethod> methods, ISourceSinkManager sourceSinkManager)
+	{
+		
+		List<Integer> foundFeatures = new ArrayList<Integer>();
+		
+		for (SootMethod m : methods) {
+			if (m.hasActiveBody()) {
+				for(Unit unit: m.getActiveBody().getUnits())
+				{
+					if(unit instanceof Stmt) {
+						Stmt stmt = (Stmt) unit;
+						SourceInfo sourceInfo = sourceSinkManager.getSourceInfo(stmt, iCfg);
+						if(sourceInfo != null)
+						{
+							int feature = (int) sourceInfo.getUserData();
+							foundFeatures.add(feature);
+						}
+					}
+				}
+			}
+		}
+		
+		return foundFeatures;
+	}
 	
-	public Table<Unit, Abstraction, Constraint<String>> getSplResults()
+	
+	// Collects all jimple files and saves them using MongoLoader
+	private void saveJimpleFiles(String appPath, List<SootMethod> methods) {
+		// Sort jimple methods, to get fixed line numbers
+		Collections.sort(methods, new Comparator<SootMethod>() {
+			@Override
+			public int compare(SootMethod m1, SootMethod m2) {
+				return m1.getName().compareTo(m2.getName());
+			}
+		});
+		
+		Map<String, StringBuilder> classes = new HashMap<String, StringBuilder>();
+		HashMap<SootClass, Integer> currentJimpleLn = new HashMap<SootClass, Integer>();
+		
+		for (SootMethod m : methods) {
+			if (m.hasActiveBody()) {
+
+				//Printer.v().setJimpleLnNum(1);
+				if (classes.containsKey(m.getDeclaringClass().getName())) {
+					Printer.v().setJimpleLnNum(currentJimpleLn.get(m.getDeclaringClass()));
+					classes.put(m.getDeclaringClass().getName(), classes.get(m.getDeclaringClass().getName()).append(
+							m.getActiveBody().toString()));
+					currentJimpleLn.put(m.getDeclaringClass(), Printer.v().getJimpleLnNum());
+				} else {
+					currentJimpleLn.put(m.getDeclaringClass(), 1);
+					Printer.v().setJimpleLnNum(currentJimpleLn.get(m.getDeclaringClass()));
+					classes.put(m.getDeclaringClass().getName(), new StringBuilder(m.getActiveBody().toString()));
+				}
+				
+				currentJimpleLn.put(m.getDeclaringClass(), Printer.v().getJimpleLnNum());
+			}
+		}
+		// In Debug mode, we write the Jimple files to the database
+		try (MongoLoader mongoLoder = new MongoLoader()) {	
+			mongoLoder.saveJimpleFiles(classes, appPath);
+			writeJimpleFiles(classes);
+		}
+	}
+	
+	public Table<Unit, Abstraction, IConstraint> getSplResults()
 	{
 		return splResults;
 	}
@@ -517,14 +626,14 @@ public class LoadTimeInfoflow extends Infoflow {
 		PackManager.v().getPack("wjtp").add(transform);
 	}
 	*/
-	private void writeJimpleFiles(Map<String, String> classes) {
+	private void writeJimpleFiles(Map<String, StringBuilder> classes) {
 		File dir = new File("JimpleFiles");
 		if(!dir.exists()){
 			dir.mkdir();
 		}
-		for (Entry<String, String> entry : classes.entrySet()) {
+		for (Entry<String, StringBuilder> entry : classes.entrySet()) {
 			try {
-				stringToTextFile(new File(".").getAbsolutePath() + System.getProperty("file.separator") +"JimpleFiles"+ System.getProperty("file.separator") + entry.getKey() + ".jimple", entry.getValue());
+				stringToTextFile(new File(".").getAbsolutePath() + System.getProperty("file.separator") +"JimpleFiles"+ System.getProperty("file.separator") + entry.getKey() + ".jimple", entry.getValue().toString());
 			} catch (IOException e) {
 				logger.error("Could not write jimple file: {}", entry.getKey() + ".jimple", e);
 			}
@@ -543,6 +652,11 @@ public class LoadTimeInfoflow extends Infoflow {
 			if (wr != null)
 				wr.close();
 		}
+	}
+	
+	public LoadTimeInfoflowProblem getLoadtimeInfoflowProblem()
+	{
+		return forwardProblem;
 	}
 
 }

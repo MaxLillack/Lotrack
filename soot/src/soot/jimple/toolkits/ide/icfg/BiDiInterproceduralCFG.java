@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import soot.Unit;
 import soot.Value;
 import soot.toolkits.graph.DirectedGraph;
 
