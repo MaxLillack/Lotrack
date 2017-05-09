@@ -12,13 +12,13 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/SPLLift_neu"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/soot"/>
-	<classpathentry kind="lib" path="C:/Users/Max/Tools/commons-io-2.4.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Max/Tools/guava-16.0.1.jar"/>
 	<classpathentry kind="lib" path="/SPLLift_neu/lib/JavaBDD/javabdd-1.0b2.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Max/Tools/commons-lang3-3.3.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="C:/Users/Max/Tools/MongoDB/mongo-java-driver-3.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/config-1.3.0.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Max/Tools/junit-benchmarks-0.7.2/junit-benchmarks-0.7.2.jar"/>
+	<classpathentry kind="lib" path="lib/junit-benchmarks-0.7.2.jar"/>
+	<classpathentry kind="lib" path="lib/mongo-java-driver-3.0.0.jar"/>
+	<classpathentry kind="lib" path="lib/commons-io-2.4.jar"/>
+	<classpathentry kind="lib" path="lib/commons-lang3-3.3.2.jar"/>
+	<classpathentry kind="lib" path="lib/guava-16.0.1.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
