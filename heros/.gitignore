@@ -7,3 +7,4 @@
 bin
 heros-trunk.jar
 .classpath
+/target/
