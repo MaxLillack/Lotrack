@@ -5,7 +5,6 @@
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/Max/Tools/z3-4.4.1-x64-win/bin"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.8.0_60"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/heros"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/soot"/>
 	<classpathentry kind="lib" path="C:/Users/Max/Tools/z3-4.4.1-x64-win/bin/com.microsoft.z3.jar"/>
@@ -14,5 +13,6 @@
 	<classpathentry kind="lib" path="lib/mongo-java-driver-3.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-api-1.7.6.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-simple-1.7.6.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
