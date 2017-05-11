@@ -18,12 +18,12 @@
 	<classpathentry kind="lib" path="libs/mockito-all-1.10.8.jar"/>
 	<classpathentry kind="lib" path="libs/powermock-mockito-1.6.1-full.jar"/>
 	<classpathentry kind="lib" path="libs/jboss-common-core-2.5.0.Final.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Max/Tools/guava-16.0.1.jar" sourcepath="C:/Users/Max/.m2/repository/com/google/guava/guava/16.0.1/guava-16.0.1-sources.jar"/>
 	<classpathentry kind="lib" path="lib/jastadd2.jar"/>
 	<classpathentry kind="lib" path="lib/abc-ja-exts-complete.jar"/>
 	<classpathentry kind="lib" path="libs/dexlib2-2.1.0-dev.jar"/>
 	<classpathentry kind="lib" path="libs/util-2.1.0-dev.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-api-1.7.6.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-simple-1.7.6.jar"/>
+	<classpathentry kind="lib" path="libs/guava-16.0.1.jar"/>
 	<classpathentry kind="output" path="classes"/>
 </classpath>
